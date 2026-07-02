@@ -333,13 +333,6 @@ where `A = B = 0` unless `--gc` is set.
 
 Suffixes `_gc`, `_legend_in`, `_legend_out`, `_legend_up`, and `--suffix` are appended automatically.
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push and open a Pull Request
-
 ## License
 
 This project is licensed under the GNU General Public License v3.0 — see [LICENSE](LICENSE).
@@ -351,27 +344,7 @@ This project is licensed under the GNU General Public License v3.0 — see [LICE
   title={HybridPB: Hybrid Pourbaix Diagram Generation Tool},
   author={Hyeonjung Jung},
   year={2025},
-  url={https://github.com/hailey-suncat/HybridPB}
+  url={https://github.com/hailey-suncat/HybridPB},
+  doi={10.26434/chemrxiv.15005305/v1}
 }
 ```
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/hailey-suncat/HybridPB/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/hailey-suncat/HybridPB/discussions)
-
-## Changelog
-
-### Version 1.1.0
-- Renamed entry point to `HybridPourbaix.py` with modular code structure
-- Added `conditions.jsonc` for per-species/element activity control
-- Added `--gibbs`, `--no-bulk`, `--ref-json`, `--show-min-coord`
-- Separate colormap controls for bulk, 2D, and 1D plots (`--colors-bulk/2d/1d`)
-- Legend placement options (`--legend-in/out/up`), custom lines (`--line`, `--fill`)
-- New examples: MnO₂ (100) and MnO₂ (110) surfaces
-- Thermodynamic data format: element-keyed JSONC with `ions`/`solids`/`gases`/`liquids` phases
-
-### Version 1.0.0 (2025)
-- Initial release with hybrid Pourbaix diagram generation
-- Grand Canonical DFT corrections
-- Thermodynamic data integration and flexible visualization

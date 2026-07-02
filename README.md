@@ -340,11 +340,10 @@ This project is licensed under the GNU General Public License v3.0 — see [LICE
 ## Citation
 
 ```bibtex
-@software{hybridpb2025,
-  title={HybridPB: Hybrid Pourbaix Diagram Generation Tool},
+@article{jung2025hybridpb,
+  title={Bridging Bulk and Surface Thermodynamics: A Hybrid Pourbaix Framework for Electrocatalyst Stability},
   author={Hyeonjung Jung},
   year={2025},
-  url={https://github.com/hailey-suncat/HybridPB},
   doi={10.26434/chemrxiv.15005305/v1}
 }
 ```

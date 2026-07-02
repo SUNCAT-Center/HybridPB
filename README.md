@@ -339,11 +339,4 @@ This project is licensed under the GNU General Public License v3.0 — see [LICE
 
 ## Citation
 
-```bibtex
-@article{jung2026hybridpb,
-  title={Bridging Bulk and Surface Thermodynamics: A Hybrid Pourbaix Framework for Electrocatalyst Stability},
-  author={Hyeonjung Jung and Evan Z. Carlson and Md Delowar Hossain and Michal Bajdich},
-  year={2026},
-  doi={10.26434/chemrxiv.15005305/v1}
-}
-```
+Jung, H.; Carlson, E. Z.; Hossain, M. D.; Bajdich, M. Bridging Bulk and Surface Thermodynamics: A Hybrid Pourbaix Framework for Electrocatalyst Stability. *ChemRxiv* **2026**. DOI: 10.26434/chemrxiv.15005305/v1

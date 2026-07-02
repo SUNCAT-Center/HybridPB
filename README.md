@@ -342,7 +342,7 @@ This project is licensed under the GNU General Public License v3.0 — see [LICE
 ```bibtex
 @article{jung2025hybridpb,
   title={Bridging Bulk and Surface Thermodynamics: A Hybrid Pourbaix Framework for Electrocatalyst Stability},
-  author={Hyeonjung Jung},
+  author={Hyeonjung Jung and Evan Z. Carlson and Md Delowar Hossain and Michal Bajdich},
   year={2025},
   doi={10.26434/chemrxiv.15005305/v1}
 }

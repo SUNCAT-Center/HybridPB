@@ -12,6 +12,7 @@ The main entry point is `HybridPourbaix.py`.
 - **Hybrid calculations**: Combine DFT surface slabs with bulk/solution species (ions, solids, gases, liquids)
 - **Grand Canonical DFT**: GC-DFT corrections with potential-dependent energy terms (`A·U² + B·U + C`)
 - **Thermodynamic integration**: Element-wise thermodynamic database in JSONC format
+- **Selectable references**: Per-functional reference energies (`--functional`) and per-element reference models such as metal vs. oxide (`--ref-model`), regenerated from a structure database
 - **Flexible activity control**: Per-species, per-element, or global ion/gas activity via `conditions.jsonc`
 - **Dual visualization**: 2D stability map and 1D energy profile at a fixed pH
 - **Customizable plots**: Separate colormaps for bulk, 2D, and 1D plots; explicit color lists; legend placement
@@ -139,7 +140,9 @@ If `label.csv` is absent, chemical formulas from the JSON files are used as labe
 }
 ```
 
-Ion formulas are parsed with pymatgen (`Fe++`, `MnO4-`, etc.). Condensed phases (solids, liquids) always have activity 1.
+Ion formulas are parsed with pymatgen (`Fe++`, `MnO4-`, etc.). Condensed phases (solids, liquids) always have activity 1. Element blocks are ordered by atomic number.
+
+A species may be given the value `null` to reserve a slot whose formation energy is not known yet. Such entries are skipped with a warning instead of breaking the run, and `build_reference_energies.py` reports exactly which placeholder is still empty.
 
 ### 4. Reference Energies (Optional)
 - **Filename**: `reference_energies.jsonc` (default in package root, or `--ref-energies`)
@@ -150,15 +153,14 @@ Ion formulas are parsed with pymatgen (`Fe++`, `MnO4-`, etc.). Condensed phases 
 ```jsonc
 {
   "PBE": {
-    // H2 and H2O are required: they set the H and O chemical potentials
     "gases": {
       "H2": -6.77149190,
       "H2O": -14.23091949
     },
     "elements": {
-      "Fe": { "Fe": -8.2408819, "Fe2O3": -5.51563177 },
+      "Fe": { "Fe": -8.2408819, "Fe2O3": -5.51563177 },  // Fe2O3: Ueff = 4.3 eV
       "Ni": { "Ni": -5.47060251 },
-      "N": -8.56951971            // single, model-independent value
+      "N": -8.56951971
     }
   },
   "PBE-D3": {
@@ -167,6 +169,8 @@ Ion formulas are parsed with pymatgen (`Fe++`, `MnO4-`, etc.). Condensed phases 
   }
 }
 ```
+
+H2 and H2O are required — they set the H and O chemical potentials. Elements are ordered by atomic number. When a reference was calculated with DFT+U (`ldau: true` and a non-zero `U − J` for that element), the effective U is noted in a trailing comment.
 
 An element maps either to a plain number (one model-independent reference) or to a `{formula: energy}` dict. A `--ref-model` token is matched against the keys directly, then as a category resolved from each key's composition — `metal` (element only), `oxide`, `hydride`, `hydroxide`:
 
@@ -201,8 +205,9 @@ A file whose formula contains two non-O/H elements is skipped (the referenced el
 Rebuild the JSONC from it with:
 
 ```bash
-python build_reference_energies.py              # rebuild every functional found
-python build_reference_energies.py --dry-run    # print without writing
+python build_reference_energies.py                 # rebuild every functional found
+python build_reference_energies.py --dry-run       # print without writing
+python build_reference_energies.py --show-source   # report the structure behind each value
 python build_reference_energies.py --functional PBE
 ```
 
@@ -214,7 +219,7 @@ g_O  = g_H2O − g_H2 + ΔGf(H2O)      # O referenced to ½O2
 g_H  = g_H2 / 2
 ```
 
-`ΔGf` is the experimental formation energy of the reduced compound, looked up in `thermodynamic_data.jsonc` (Gibbs corrections of the compound are assumed zero). A pure element has `ΔGf = 0` and no O/H, so it reduces to `E_total/n_M`. Structures whose reduced formula has no entry in `thermodynamic_data.jsonc` are reported as `SKIPPED` and left out. Elements absent from the database keep their current values, and each generated line carries a comment naming its source structure.
+`ΔGf` is the experimental formation energy of the reduced compound, looked up in `thermodynamic_data.jsonc` (Gibbs corrections of the compound are assumed zero). A pure element has `ΔGf = 0` and no O/H, so it reduces to `E_total/n_M`. Structures whose reduced formula has no entry — or only a `null` placeholder — in `thermodynamic_data.jsonc` are reported as `SKIPPED` and left out. Elements absent from the database keep their current values.
 
 ### 6. Conditions File (Optional)
 - **Filename**: `conditions.jsonc` (default in package root, or `--conditions`)
@@ -336,6 +341,8 @@ Five examples are provided under `examples/`:
 | [3_FeNC](examples/3_FeNC/) | Fe–N₄–C + GC-DFT | Spin states, GC-DFT vs. standard DFT |
 | [4_MnO2_100](examples/4_MnO2_100/) | MnO₂ (100) surface | Oxide surface, K co-adsorption, custom thermo data |
 | [5_MnO2_110](examples/5_MnO2_110/) | MnO₂ (110) surface | Facet comparison, OH coverage effects |
+
+Each example directory contains its own `reference_energies.jsonc`, and every command in its `command*.sh` passes it with `--ref-energies`. The examples therefore stay reproducible no matter how the package-level reference energies change.
 
 ### Example Commands
 

@@ -75,6 +75,12 @@ python HybridPourbaix.py --hybrid --gc --gibbs --csv-dir ./labels
 # Custom thermodynamic data and reference energies
 python HybridPourbaix.py --thermo-data ./custom_thermo.jsonc --ref-energies ./custom_ref.jsonc
 
+# Use the reference energies of another functional
+python HybridPourbaix.py --hybrid --functional PBE-D3
+
+# Reference the metals to their oxides instead of the elemental metals
+python HybridPourbaix.py --hybrid --ref-model oxide
+
 # Per-species activity overrides
 python HybridPourbaix.py --hybrid --conditions ./conditions.jsonc --concentration 1e-6
 ```
@@ -136,19 +142,81 @@ If `label.csv` is absent, chemical formulas from the JSON files are used as labe
 Ion formulas are parsed with pymatgen (`Fe++`, `MnO4-`, etc.). Condensed phases (solids, liquids) always have activity 1.
 
 ### 4. Reference Energies (Optional)
-- **Filename**: `reference_energies.jsonc` (default in package root)
-- **Format**: Element symbol → DFT reference energy (eV)
+- **Filename**: `reference_energies.jsonc` (default in package root, or `--ref-energies`)
+- **Format**: Functional name → `gases` (H2/H2O DFT total energies) + `elements` (reference energy per element atom, keyed by the formula of the reference compound), in eV
+- **Selection**: `--functional NAME` picks the functional block (default: `PBE`, matched case-insensitively); `--ref-model` picks the reference within it (default: `metal`)
 
 **Example:**
-```json
+```jsonc
 {
-  "Fe": -5.041720865,
-  "Co": -4.55701137,
-  "Ni": -1.6850032
+  "PBE": {
+    // H2 and H2O are required: they set the H and O chemical potentials
+    "gases": {
+      "H2": -6.77149190,
+      "H2O": -14.23091949
+    },
+    "elements": {
+      "Fe": { "Fe": -8.2408819, "Fe2O3": -5.51563177 },
+      "Ni": { "Ni": -5.47060251 },
+      "N": -8.56951971            // single, model-independent value
+    }
+  },
+  "PBE-D3": {
+    "gases": {},
+    "elements": {}
+  }
 }
 ```
 
-### 5. Conditions File (Optional)
+An element maps either to a plain number (one model-independent reference) or to a `{formula: energy}` dict. A `--ref-model` token is matched against the keys directly, then as a category resolved from each key's composition — `metal` (element only), `oxide`, `hydride`, `hydroxide`:
+
+```bash
+--ref-model metal            # every element referenced to its elemental phase
+--ref-model oxide            # every element referenced to its oxide
+--ref-model metal Mn=oxide   # metal by default, oxide for Mn
+--ref-model metal Fe=Fe3O4   # an explicit formula when several oxides exist
+```
+
+If the requested model is missing but the element has exactly one entry, that one is used and a note is printed; if a category matches several keys, the run aborts and lists them. Missing H2/H2O energies or an element absent from the block also abort with an explicit message. Zero-point, heat-capacity, and entropy corrections stay in `HybridPourbaix.py`; only DFT total energies and derived references live in this file.
+
+Example directories ship their own pinned `reference_energies.jsonc` and pass it via `--ref-energies`, so they reproduce even if the package-level file changes.
+
+### 5. Reference Structure Database (Optional)
+- **Location**: `reference_energies/<functional>/<formula>.json`
+- **Purpose**: The DFT structures the numbers above are derived from, so `reference_energies.jsonc` can be regenerated instead of hand-edited
+
+Each file is an ASE-readable structure with an attached calculator (e.g. a VASP `final_with_calculator.json`), named after its reduced formula. The element it references is the single constituent that is not O or H, so no per-element folders are needed:
+
+```
+reference_energies/
+  PBE/
+    Fe.json        # cell Fe2   -> reference for Fe
+    Fe2O3.json     # cell Fe4O6 -> reference for Fe
+    Ru.json
+    RuO2.json
+```
+
+A file whose formula contains two non-O/H elements is skipped (the referenced element would be ambiguous), and a filename that disagrees with the structure's composition is reported with the expected name.
+
+Rebuild the JSONC from it with:
+
+```bash
+python build_reference_energies.py              # rebuild every functional found
+python build_reference_energies.py --dry-run    # print without writing
+python build_reference_energies.py --functional PBE
+```
+
+Each structure is converted to a reference energy per element atom:
+
+```
+mu_M = E_total/n_M − ΔGf/n_M − (n_O/n_M)·g_O − (n_H/n_M)·g_H
+g_O  = g_H2O − g_H2 + ΔGf(H2O)      # O referenced to ½O2
+g_H  = g_H2 / 2
+```
+
+`ΔGf` is the experimental formation energy of the reduced compound, looked up in `thermodynamic_data.jsonc` (Gibbs corrections of the compound are assumed zero). A pure element has `ΔGf = 0` and no O/H, so it reduces to `E_total/n_M`. Structures whose reduced formula has no entry in `thermodynamic_data.jsonc` are reported as `SKIPPED` and left out. Elements absent from the database keep their current values, and each generated line carries a comment naming its source structure.
+
+### 6. Conditions File (Optional)
 - **Filename**: `conditions.jsonc` (default in package root, or `--conditions`)
 - **Purpose**: Override ion/gas activity on a per-species or per-element basis
 
@@ -198,6 +266,8 @@ Options are grouped in `HybridPourbaix.py --help`. Summary below.
 ```bash
 --concentration FLOAT   # Default ion activity in M (default: 1e-6)
 --pressure FLOAT        # Default gas activity in atm (default: 1e-6)
+--functional NAME       # Functional block in reference_energies.jsonc (default: PBE)
+--ref-model MODEL ...   # Reference model + per-element exceptions, e.g. metal Mn=oxide
 ```
 
 ### Axis Range
@@ -298,7 +368,7 @@ Each example directory includes `command.sh` and `command-simple.sh` scripts wit
 ### Surface Energy Correction
 DFT total energies are converted to relative formation energies using:
 1. A **reference surface** — the highest-energy pure-metal slab (H/O only), or the structure specified by `--ref-json`
-2. **Element reference energies** from `reference_energies.jsonc`
+2. **Element and H2/H2O reference energies** from the `--functional` / `--ref-model` selection in `reference_energies.jsonc`
 3. **Gibbs corrections** — either explicit `G_corr` (`--gibbs`) or estimated from `#OH` counts
 
 In hybrid mode, a new reference is selected from surface+bulk combinations (preferring neutral phases with basic solid references).
@@ -364,6 +434,8 @@ This project is licensed under the GNU General Public License v3.0 — see [LICE
 
 ### Version 1.1.0
 - Renamed entry point to `HybridPourbaix.py` with modular code structure
+- `reference_energies.jsonc` is now functional-keyed (`gases` + `elements`) and selected with `--functional`; H2/H2O energies moved out of the code into that file
+- Per-element reference models (metal/oxide/…) selected with `--ref-model`, backed by the `reference_energies/` structure database and `build_reference_energies.py`
 - Added `conditions.jsonc` for per-species/element activity control
 - Added `--gibbs`, `--no-bulk`, `--ref-json`, `--show-min-coord`
 - Separate colormap controls for bulk, 2D, and 1D plots (`--colors-bulk/2d/1d`)

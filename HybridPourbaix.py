@@ -87,8 +87,12 @@ def dg(surf, pH, U, ref_surf):
     return surface_term + U_coeff * U + const * pH_coeff * pH
 
 
-def init_thermo_constants():
-    """Initialize module-level thermodynamic constants."""
+def init_thermo_constants(gas_energies):
+    """Initialize module-level thermodynamic constants.
+
+    gas_energies holds the H2/H2O DFT total energies (eV) of the selected
+    functional, as read from reference_energies.jsonc.
+    """
     global const, water_formation_energy, gh, go, goh, dgh, dgo, dgoh
 
     calmol = 23.061
@@ -99,9 +103,9 @@ def init_thermo_constants():
 
     if T != 298.15:
         print(f"Warning: Temperature is not 300 K. The water formation energy is not valid.")
-        
-    h2 = -6.77149190
-    h2o = -14.23091949
+
+    h2 = gas_energies['H2']
+    h2o = gas_energies['H2O']
     gh2o = h2o + 0.558 - 0.675 + 0.103
     gh2 = h2 + 0.268 - 0.408 + 0.0905
 
@@ -294,6 +298,13 @@ def parse_args():
                         help='Default gas activity (atm); used when conditions.jsonc has no override')
     thermo.add_argument('--conditions', type=str,
                         help='Path to conditions.jsonc (per-species activity/pressure overrides)')
+    thermo.add_argument('--functional', type=str, default='PBE',
+                        help='Functional block to read from reference_energies.jsonc (default: PBE)')
+    thermo.add_argument('--ref-model', type=str, nargs='+', default=['metal'], metavar='MODEL',
+                        help='Reference model for element energies: a global default plus optional '
+                             'per-element exceptions, e.g. --ref-model metal Mn=oxide. Accepts a '
+                             'category (metal, oxide, hydride, hydroxide) or an explicit formula '
+                             'such as Fe=Fe3O4 (default: metal)')
     thermo.add_argument('--gibbs', action='store_true', help='Apply G_corr from label.csv')
     thermo.add_argument('--ref-json', type=str, help='JSON filename for reference surface (default: auto-detect)')
 
@@ -528,6 +539,11 @@ def surface_formation_corrections(surfs, ref_surf, file_oh_counts, args, unique_
 
         formation_correction = -(row['H'] * gh + row['O'] * go)
         for el in unique_elements:
+            if el not in ref_energies:
+                raise SystemExit(
+                    f"Element '{el}' has no reference energy for functional "
+                    f"'{args.functional}'. Add it to reference_energies.jsonc."
+                )
             formation_correction -= row[el] * ref_energies[el]
 
         row['ΔGh'] = row['ΔGh'] + gibbs_correction + formation_correction
@@ -583,6 +599,9 @@ def process_thermo_phase(phase_data, phase_suffix, phase_key, el, remaining_elem
     """Process one phase (ions/solids/gases/liquids) from thermodynamic data."""
     rows = []
     for formula, energy in phase_data.items():
+        if energy is None:
+            print(f"WARNING: '{formula}' has no formation energy yet in thermodynamic data; skipped.")
+            continue
         conc = resolve_activity(formula, el, phase_key, conditions, args)
         row, full_dict = parse_thermo_entry(
             formula, energy, el, remaining_elements, conc, phase_suffix,
@@ -599,13 +618,145 @@ def process_thermo_phase(phase_data, phase_suffix, phase_key, el, remaining_elem
 
 
 def load_ref_energies(args):
-    """Load reference element energies from JSON file."""
+    """Load gas and element reference energies for the selected functional.
+
+    Returns (gas_energies, element_energies) from the --functional block of
+    reference_energies.jsonc.
+    """
     script_dir = os.path.dirname(__file__)
     ref_path = args.ref_energies or os.path.join(script_dir, 'reference_energies.jsonc')
-    if os.path.exists(ref_path):
-        with open(ref_path, 'r') as f:
-            return json.load(f)
-    return {}
+    if not os.path.exists(ref_path):
+        raise SystemExit(f"Reference energy file not found: {ref_path}")
+
+    data = load_jsonc(ref_path)
+
+    functional = args.functional
+    if functional not in data:
+        matches = [key for key in data if key.lower() == functional.lower()]
+        if not matches:
+            available = ', '.join(data) or '(none)'
+            raise SystemExit(
+                f"Functional '{functional}' not found in {ref_path}. Available: {available}"
+            )
+        functional = matches[0]
+
+    block = data[functional] or {}
+    gas_energies = block.get('gases') or {}
+    element_energies = block.get('elements') or {}
+
+    missing_gases = [gas for gas in ('H2', 'H2O') if gas not in gas_energies]
+    if missing_gases:
+        raise SystemExit(
+            f"Functional '{functional}' in {ref_path} is missing gas energies: "
+            f"{', '.join(missing_gases)}"
+        )
+    if not element_energies:
+        print(f"WARNING: Functional '{functional}' has no element reference energies in "
+              f"{ref_path}! Energy corrections may be inaccurate.")
+
+    return gas_energies, element_energies
+
+
+REF_MODEL_ALIASES = {
+    'metal': frozenset(),
+    'element': frozenset(),
+    'oxide': frozenset({'O'}),
+    'hydride': frozenset({'H'}),
+    'hydroxide': frozenset({'O', 'H'}),
+}
+
+
+def classify_ref_key(key, el):
+    """Category ('metal', 'oxide', ...) of a reference key from its formula."""
+    try:
+        composition = Ion.from_formula(key)
+        others = frozenset(str(symbol) for symbol in composition.elements) - {el}
+    except Exception:
+        return None
+
+    for alias, elements in REF_MODEL_ALIASES.items():
+        if others == elements:
+            return alias
+    return None
+
+
+def parse_ref_model(tokens):
+    """Split --ref-model tokens into (global model, {element: model})."""
+    global_model = 'metal'
+    per_element = {}
+    for token in tokens:
+        if '=' in token:
+            el, _, model = token.partition('=')
+            if not el or not model:
+                raise SystemExit(f"Invalid --ref-model entry '{token}'. Use the form El=model.")
+            per_element[el] = model
+        else:
+            global_model = token
+    return global_model, per_element
+
+
+def resolve_element_energies(element_energies, unique_elements, args):
+    """Pick one reference energy per element according to --ref-model.
+
+    An element maps either to a plain number (single, model-independent
+    reference) or to a {formula: energy} dict. A --ref-model token is matched
+    against the keys directly, then as a category alias ('metal', 'oxide',
+    'hydride', 'hydroxide') resolved from each key's composition. When neither
+    matches but the element has exactly one entry, that one is used with a
+    notice.
+    """
+    global_model, per_element = parse_ref_model(args.ref_model)
+    resolved = {}
+    used_models = {}
+
+    for el in unique_elements:
+        entry = element_energies.get(el)
+        if entry is None:
+            continue
+        if not isinstance(entry, dict):
+            resolved[el] = float(entry)
+            used_models[el] = 'single'
+            continue
+
+        model = per_element.get(el, global_model)
+        if model in entry:
+            resolved[el] = float(entry[model])
+            used_models[el] = model
+            continue
+
+        matches = [key for key in entry if classify_ref_key(key, el) == model]
+        if len(matches) == 1:
+            resolved[el] = float(entry[matches[0]])
+            used_models[el] = matches[0]
+            continue
+        if len(matches) > 1:
+            raise SystemExit(
+                f"Element '{el}' has several '{model}' references for functional "
+                f"'{args.functional}': {', '.join(matches)}. Pick one with "
+                f"--ref-model {el}={matches[0]}"
+            )
+
+        if len(entry) == 1:
+            only_model, only_energy = next(iter(entry.items()))
+            print(f"NOTE: Element '{el}' has no '{model}' reference energy for functional "
+                  f"'{args.functional}'; using the only available one ('{only_model}').")
+            resolved[el] = float(only_energy)
+            used_models[el] = only_model
+            continue
+
+        available = ', '.join(entry) or '(none)'
+        raise SystemExit(
+            f"Element '{el}' has no '{model}' reference energy for functional "
+            f"'{args.functional}'. Available references: {available}"
+        )
+
+    if args.show_thermo and resolved:
+        print(f"\nElement reference energies (functional: {args.functional}, "
+              f"default model: {global_model}):")
+        for el, energy in resolved.items():
+            print(f"    {el}: {energy} eV ({used_models[el]})")
+
+    return resolved
 
 
 def load_thermo_data(args):
@@ -628,8 +779,8 @@ def load_thermo_species(unique_elements, remaining_elements, thermo_data, ref_en
 
     for el in unique_elements:
         if el not in ref_energies:
-            print(f"WARNING: Element '{el}' not found in reference_energies.jsonc! "
-                  "Energy corrections may be inaccurate.")
+            print(f"WARNING: Element '{el}' not found in the '{args.functional}' block of "
+                  "reference_energies.jsonc! Energy corrections may be inaccurate.")
 
         if el not in thermo_data:
             print(f"WARNING: Element '{el}' not found in thermodynamic data! "
@@ -880,7 +1031,7 @@ def plot_1d_diagram(surfs, nsurfs, Urange, Umin, Umax, target_pH, ref_surf, uniq
 # Main
 # ---------------------------------------------------------------------------
 
-def main(args, png_name, suffix):
+def main(args, png_name, suffix, element_energies):
     tick = args.tick
     pHmin, pHmax = args.pHmin, args.pHmax
     pHrange = np.arange(pHmin, pHmax + tick, tick)
@@ -922,8 +1073,8 @@ def main(args, png_name, suffix):
         print("remaining_elements:", remaining_elements)
         print("unique_elements:", unique_elements)
 
+    ref_energies = resolve_element_energies(element_energies, unique_elements, args)
     ref_surf_idx, ref_surf = find_ref_surface(surfs, unique_elements, args)
-    ref_energies = load_ref_energies(args)
     thermo_data = load_thermo_data(args)
     surface_formation_corrections(surfs, ref_surf, file_oh_counts, args, unique_elements, ref_energies)
 
@@ -1000,7 +1151,8 @@ def main(args, png_name, suffix):
     )
 
 if __name__ == "__main__":
-    init_thermo_constants()
     cli_args = parse_args()
+    gas_energies, element_energies = load_ref_energies(cli_args)
+    init_thermo_constants(gas_energies)
     output_png_name, output_suffix = build_output_names(cli_args)
-    main(cli_args, output_png_name, output_suffix)
+    main(cli_args, output_png_name, output_suffix, element_energies)

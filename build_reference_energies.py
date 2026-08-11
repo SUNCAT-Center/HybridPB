@@ -330,6 +330,11 @@ def main():
         raise SystemExit(f"No functional folders found in {args.db}")
 
     for functional in functionals:
+        func_dir = os.path.join(args.db, functional)
+        if not glob.glob(os.path.join(func_dir, '*.json')):
+            print(f"{functional}: no structures in {func_dir}, skipped")
+            continue
+
         block = data.get(functional) or {}
         gases = block.get('gases') or {}
         missing = [gas for gas in ('H2', 'H2O') if gas not in gases]
@@ -347,7 +352,7 @@ def main():
         derived, skipped, ueffs = scan_database(args.db, functional, thermo_data, g_o)
         ueffs_by_functional[functional] = ueffs
         if not derived:
-            print(f"{functional}: no structures found in {os.path.join(args.db, functional)}, skipped")
+            print(f"{functional}: no usable structures in {func_dir}, skipped")
             continue
 
         merged, provenance = merge_elements(block.get('elements') or {}, derived)

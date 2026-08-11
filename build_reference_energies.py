@@ -82,14 +82,16 @@ def find_formation_energy(counts, el, thermo_data):
             ion = Ion.from_formula(formula)
         except Exception:
             continue
-        key_counts = {symbol: int(ion[symbol]) for symbol in reduced}
-        if key_counts == reduced and int(ion.num_atoms) == sum(reduced.values()):
+        # tabulated formulas are not always in lowest terms (P4H2), so compare
+        # the reduced compositions and divide by the written formula's own count
+        key_counts = {str(symbol): int(ion[str(symbol)]) for symbol in ion.elements}
+        if reduce_counts(key_counts) == reduced:
             if energy is None:
                 raise LookupError(
                     f"'{formula}' is still a null placeholder in "
                     f"thermodynamic_data.jsonc['{el}']['solids']"
                 )
-            return float(energy), formula, reduced[el]
+            return float(energy), formula, key_counts[el]
 
     pretty = ''.join(f"{sym}{n if n > 1 else ''}" for sym, n in sorted(reduced.items()))
     raise LookupError(

@@ -195,9 +195,8 @@ An element maps either to a plain number (one model-independent reference) or to
 
 If the requested model is missing but the element has exactly one entry, that one is used and a note is printed; if a category matches several keys, the run aborts and lists them. Missing H2/H2O energies or an element absent from the block also abort with an explicit message. Zero-point, heat-capacity, and entropy corrections stay in `HybridPourbaix.py`; only DFT total energies and derived references live in this file.
 
-The `1_MNC`, `2_MnO2`, and `3_RuO2` example directories ship their own pinned `reference_energies.jsonc` and pass it
-via `--ref-energies`, so they reproduce even if the package-level file changes. The `4_PO4` examples deliberately use
-the package-level file, since they exist to exercise `--functional` and `--ref-model` against it.
+Example directories ship their own pinned `reference_energies.jsonc` and pass it via `--ref-energies`, so they
+reproduce even if the package-level file changes.
 
 ### 5. Reference Structure Database (Optional)
 - **Location**: `reference_energies/<functional>/<formula>.json`
@@ -346,7 +345,7 @@ Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
 
 ## Examples
 
-Eleven examples are provided under `examples/`, grouped by system:
+Eight examples are provided under `examples/`, grouped by system:
 
 | Example | System | Focus |
 |---------|--------|-------|
@@ -358,9 +357,6 @@ Eleven examples are provided under `examples/`, grouped by system:
 | [3_RuO2/1_RuO2](examples/3_RuO2/1_RuO2/) | RuO₂ (110) surface | Bridge/cus site occupancy, bridge-row vacancies |
 | [3_RuO2/2_ReRuO2](examples/3_RuO2/2_ReRuO2/) | Re-doped RuO₂ (110) | Ru leaving the bridge row |
 | [3_RuO2/3_ReRuO2](examples/3_RuO2/3_ReRuO2/) | Re-doped RuO₂ (110) | Re leaving the bridge row |
-| [4_PO4/1_PBE](examples/4_PO4/1_PBE/) | Phosphate on Pt | Adsorbed phosphate with co-adsorbed H₂O, `--ref-model oxide` |
-| [4_PO4/2_PBE-D3](examples/4_PO4/2_PBE-D3/) | Phosphate on Pt | Larger set including bridge- and top-site *OH |
-| [4_PO4/3_BEEF](examples/4_PO4/3_BEEF/) | Phosphate on Pt | Same chemistry through the `BEEF` reference block |
 
 Each example directory contains its own `reference_energies.jsonc`, and every command in its `command*.sh` passes it with `--ref-energies`. The examples therefore stay reproducible no matter how the package-level reference energies change.
 
@@ -391,11 +387,6 @@ python ../../../HybridPourbaix.py --hybrid --no-bulk --Umin -0.5 --Umax 2.0 \
 cd examples/3_RuO2/1_RuO2
 python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --hybrid --no-bulk \
   --Umin -0.5 --Umax 2.5 --Gmin -15 --Gmax 15 --cmap-2d RdYlBu --legend-out
-
-# Phosphate on Pt: BEEF block, phosphorus referenced to P2O5
-cd examples/4_PO4/3_BEEF
-python ../../../HybridPourbaix.py --functional BEEF --ref-model oxide \
-  --thermo-data ./thermodynamic_data.jsonc --hybrid --OER --HER --legend-out
 ```
 
 Each example directory includes `command.sh` and `command-simple.sh` scripts with full reproduction workflows.

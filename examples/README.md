@@ -1,6 +1,6 @@
 # HybridPB Examples
 
-This directory contains eleven worked examples, grouped into four systems, covering different electrochemical
+This directory contains eight worked examples, grouped into three systems, covering different electrochemical
 systems and calculation modes. Each example includes DFT structure files (`*.json`), a `label.csv`, and shell scripts that reproduce the published figures.
 
 Run all commands from the example directory using `HybridPourbaix.py` in the package root:
@@ -22,9 +22,6 @@ python ../../../HybridPourbaix.py --help
 | [3_RuO2/1_RuO2](3_RuO2/1_RuO2/) | RuO₂ (110) surface | Bridge/cus site occupancy, bridge-row vacancies | OER, oxide dissolution |
 | [3_RuO2/2_ReRuO2](3_RuO2/2_ReRuO2/) | Re-doped RuO₂ (110) | Same site model, Ru leaving the bridge row | Dopant effect on dissolution |
 | [3_RuO2/3_ReRuO2](3_RuO2/3_ReRuO2/) | Re-doped RuO₂ (110) | Re rather than Ru leaving the bridge row | Selective dopant dissolution |
-| [4_PO4/1_PBE](4_PO4/1_PBE/) | Phosphate on Pt | Adsorbed PO₄/HPO₄/H₂PO₄ with co-adsorbed H₂O, P referenced to P₂O₅ | Phosphate poisoning |
-| [4_PO4/2_PBE-D3](4_PO4/2_PBE-D3/) | Phosphate on Pt | Larger set adding bridge- and top-site *OH co-adsorption | Site competition |
-| [4_PO4/3_BEEF](4_PO4/3_BEEF/) | Phosphate on Pt | Same chemistry through the `BEEF` reference block | Reference sensitivity |
 
 ### Files in Each Example
 
@@ -32,7 +29,7 @@ python ../../../HybridPourbaix.py --help
 |------|-------------|
 | `*.json` | ASE-readable DFT structures with total energies |
 | `label.csv` | Structure labels, `#OH` counts, optional `G_corr` and GC-DFT `A,B,C` |
-| `reference_energies.jsonc` | Gas and element reference energies pinned per example, passed via `--ref-energies` (not in `4_PO4`, which uses the package-level file) |
+| `reference_energies.jsonc` | Gas and element reference energies pinned per example, passed via `--ref-energies` |
 | `thermodynamic_data.jsonc` | Element-specific bulk/solution data, where the package defaults need overriding |
 | `command.sh` | Full reproduction workflow with legend and color settings |
 | `command-simple.sh` | Simplified workflow without legend placement flags |
@@ -111,24 +108,6 @@ python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --hy
 
 Concepts: two-site occupancy labels, colormap windowing (`--cmin-2d`/`--cmax-2d`/`--cgap-2d`), wide 1D energy ranges
 
-### Reference Selection — Examples 9–11 (phosphate on Pt)
-
-Phosphate adsorption on Pt(111). These are the only examples that read the package-level `reference_energies.jsonc`
-directly, so they double as a worked demonstration of `--functional` and `--ref-model`. Phosphorus is referenced to
-P₂O₅ rather than elemental P, which is what `--ref-model oxide` selects.
-
-```bash
-cd 4_PO4/3_BEEF
-python ../../../HybridPourbaix.py --functional BEEF --ref-model oxide --OER --HER --legend-out --hybrid \
-  --pHmin -2 --pHmax 16 --Umin -2 --Umax 2 \
-  --thermo-data ./thermodynamic_data.jsonc
-```
-
-Each directory keeps a `thermodynamic_data.jsonc` holding only the aqueous phosphate species, so the bulk diagram
-shows the phosphate ions instead of solid P phases.
-
-Concepts: `--functional`, `--ref-model oxide`, aqueous-only thermo overrides, `--OER`/`--HER` stability lines
-
 ## Getting Started
 
 ### Prerequisites
@@ -154,8 +133,7 @@ Runs a minimal surface calculation in each example directory:
 cd HybridPB
 for example in 1_MNC/1_CoNC 1_MNC/2_TiNC 1_MNC/3_FeNC \
                2_MnO2/1_MnO2_100 2_MnO2/2_MnO2_110 \
-               3_RuO2/1_RuO2 3_RuO2/2_ReRuO2 3_RuO2/3_ReRuO2 \
-               4_PO4/1_PBE 4_PO4/2_PBE-D3 4_PO4/3_BEEF; do
+               3_RuO2/1_RuO2 3_RuO2/2_ReRuO2 3_RuO2/3_ReRuO2; do
     cd examples/$example
     python ../../../HybridPourbaix.py --figx 4 --figy 4 --suffix test
     cd ../../..

@@ -1,23 +1,30 @@
 # HybridPB Examples
 
-This directory contains five worked examples for different electrochemical systems and calculation modes. Each example includes DFT structure files (`*.json`), a `label.csv`, and shell scripts that reproduce the published figures.
+This directory contains eleven worked examples, grouped into four systems, covering different electrochemical
+systems and calculation modes. Each example includes DFT structure files (`*.json`), a `label.csv`, and shell scripts that reproduce the published figures.
 
 Run all commands from the example directory using `HybridPourbaix.py` in the package root:
 
 ```bash
-cd examples/1_CoNC
-python ../../HybridPourbaix.py --help
+cd examples/1_MNC/1_CoNC
+python ../../../HybridPourbaix.py --help
 ```
 
 ## Examples Overview
 
 | Example | System | Key Features | Applications |
 |---------|--------|--------------|--------------|
-| [1_CoNC](1_CoNC/) | Co–N₄–C SAC | Surface adsorbates, concentration sweeps, 1D pH profiles | ORR, HER |
-| [2_TiNC](2_TiNC/) | Ti–N₄–C catalyst | 43 surface species, NOxHy vs. OxHy subsets | NO₃RR, selectivity |
-| [3_FeNC](3_FeNC/) | Fe–N₄–C + GC-DFT | High/intermediate/low spin states, `--gc`, custom thermo data | Advanced ORR |
-| [4_MnO2_100](4_MnO2_100/) | MnO₂ (100) surface | Oxide slab, K co-adsorption, custom `thermodynamic_data.jsonc` | OER, oxide electrochemistry |
-| [5_MnO2_110](5_MnO2_110/) | MnO₂ (110) surface | Facet comparison with (100), OH coverage variants | Surface facet effects |
+| [1_MNC/1_CoNC](1_MNC/1_CoNC/) | Co–N₄–C SAC | Surface adsorbates, concentration sweeps, 1D pH profiles | ORR, HER |
+| [1_MNC/2_TiNC](1_MNC/2_TiNC/) | Ti–N₄–C catalyst | 43 surface species, NOxHy vs. OxHy subsets | NO₃RR, selectivity |
+| [1_MNC/3_FeNC](1_MNC/3_FeNC/) | Fe–N₄–C + GC-DFT | High/intermediate/low spin states, `--gc`, custom thermo data | Advanced ORR |
+| [2_MnO2/1_MnO2_100](2_MnO2/1_MnO2_100/) | MnO₂ (100) surface | Oxide slab, K co-adsorption, custom `thermodynamic_data.jsonc` | OER, oxide electrochemistry |
+| [2_MnO2/2_MnO2_110](2_MnO2/2_MnO2_110/) | MnO₂ (110) surface | Facet comparison with (100), OH coverage variants | Surface facet effects |
+| [3_RuO2/1_RuO2](3_RuO2/1_RuO2/) | RuO₂ (110) surface | Bridge/cus site occupancy, bridge-row vacancies | OER, oxide dissolution |
+| [3_RuO2/2_ReRuO2](3_RuO2/2_ReRuO2/) | Re-doped RuO₂ (110) | Same site model, Ru leaving the bridge row | Dopant effect on dissolution |
+| [3_RuO2/3_ReRuO2](3_RuO2/3_ReRuO2/) | Re-doped RuO₂ (110) | Re rather than Ru leaving the bridge row | Selective dopant dissolution |
+| [4_PO4/1_PBE](4_PO4/1_PBE/) | Phosphate on Pt | Adsorbed PO₄/HPO₄/H₂PO₄ with co-adsorbed H₂O, P referenced to P₂O₅ | Phosphate poisoning |
+| [4_PO4/2_PBE-D3](4_PO4/2_PBE-D3/) | Phosphate on Pt | Larger set adding bridge- and top-site *OH co-adsorption | Site competition |
+| [4_PO4/3_BEEF](4_PO4/3_BEEF/) | Phosphate on Pt | Same chemistry through the `BEEF` reference block | Reference sensitivity |
 
 ### Files in Each Example
 
@@ -25,7 +32,8 @@ python ../../HybridPourbaix.py --help
 |------|-------------|
 | `*.json` | ASE-readable DFT structures with total energies |
 | `label.csv` | Structure labels, `#OH` counts, optional `G_corr` and GC-DFT `A,B,C` |
-| `thermodynamic_data.jsonc` | Element-specific bulk/solution data (examples 3–5) |
+| `reference_energies.jsonc` | Gas and element reference energies pinned per example, passed via `--ref-energies` (not in `4_PO4`, which uses the package-level file) |
+| `thermodynamic_data.jsonc` | Element-specific bulk/solution data, where the package defaults need overriding |
 | `command.sh` | Full reproduction workflow with legend and color settings |
 | `command-simple.sh` | Simplified workflow without legend placement flags |
 
@@ -38,9 +46,9 @@ Some scripts temporarily move JSON files into subdirectories (`vac/`, `OH/`, `no
 Learn surface-only and hybrid modes, ion concentration effects, and 1D energy profiles at fixed pH.
 
 ```bash
-cd 1_CoNC
-python ../../HybridPourbaix.py --HER --OER --png --figx 4 --figy 4
-python ../../HybridPourbaix.py --hybrid --no-bulk --legend-in --pH 7 --Gmin -4 --Gmax 12
+cd 1_MNC/1_CoNC
+python ../../../HybridPourbaix.py --HER --OER --png --figx 4 --figy 4
+python ../../../HybridPourbaix.py --hybrid --no-bulk --legend-in --pH 7 --Gmin -4 --Gmax 12
 ```
 
 Concepts: reference surface selection (`--ref-json`), `--no-bulk`, `--concentration`, `--colors-2d`
@@ -50,9 +58,9 @@ Concepts: reference surface selection (`--ref-json`), `--no-bulk`, `--concentrat
 Multi-species nitrate reduction with competing HER. Compare OxHy-only vs. full NOxHy adsorbate sets.
 
 ```bash
-cd 2_TiNC
-python ../../HybridPourbaix.py --line -0.7 --Umin -2 --Umax 2 --pHmin -2 --pHmax 16 --suffix OxHy
-python ../../HybridPourbaix.py --hybrid --no-bulk --line -0.7 \
+cd 1_MNC/2_TiNC
+python ../../../HybridPourbaix.py --line -0.7 --Umin -2 --Umax 2 --pHmin -2 --pHmax 16 --suffix OxHy
+python ../../../HybridPourbaix.py --hybrid --no-bulk --line -0.7 \
   --Umin -2 --Umax 2 --pHmin -2 --pHmax 16 --concentration 1e-3
 ```
 
@@ -63,9 +71,9 @@ Concepts: custom potential lines (`--line`), wide pH windows, subset filtering v
 Grand Canonical DFT with multiple spin states and bulk Fe oxide phases.
 
 ```bash
-cd 3_FeNC
-python ../../HybridPourbaix.py --gc --fill 0.72 0.92 --Umin -1.5 --Umax 2.0 --legend-in
-python ../../HybridPourbaix.py --hybrid --no-bulk --gc --thermo-data ./thermodynamic_data.jsonc \
+cd 1_MNC/3_FeNC
+python ../../../HybridPourbaix.py --gc --fill 0.72 0.92 --Umin -1.5 --Umax 2.0 --legend-in
+python ../../../HybridPourbaix.py --hybrid --no-bulk --gc --thermo-data ./thermodynamic_data.jsonc \
   --fill 0.72 0.92 --Gmin -6 --Gmax 8
 ```
 
@@ -78,16 +86,48 @@ Additional script: `command-toc.sh` (table-of-contents figures)
 MnO₂ (100) and (110) facet calculations with K co-adsorption and OH coverage variants.
 
 ```bash
-cd 4_MnO2_100
-python ../../HybridPourbaix.py --hybrid --HER --OER --Umin -0.5 --Umax 2.0 --suffix K
-python ../../HybridPourbaix.py --hybrid --no-bulk --thermo-data ./thermodynamic_data.jsonc \
+cd 2_MnO2/1_MnO2_100
+python ../../../HybridPourbaix.py --hybrid --HER --OER --Umin -0.5 --Umax 2.0 --suffix K
+python ../../../HybridPourbaix.py --hybrid --no-bulk --thermo-data ./thermodynamic_data.jsonc \
   --Umin -0.5 --Umax 2.0 --suffix MnO4
 
-cd ../5_MnO2_110
-python ../../HybridPourbaix.py --hybrid --no-bulk --Umin -0.5 --Umax 2.0
+cd ../../2_MnO2/2_MnO2_110
+python ../../../HybridPourbaix.py --hybrid --no-bulk --Umin -0.5 --Umax 2.0
 ```
 
 Concepts: per-example `thermodynamic_data.jsonc`, explicit bulk colors (`--colors-bulk`), facet-to-facet comparison
+
+### Oxide Dissolution — Examples 6–8 (RuO₂)
+
+RuO₂ (110) bridge/cus site occupancy, and how Re doping changes which cation leaves the bridge row.
+`2_ReRuO2` lets Ru go, `3_ReRuO2` lets Re go.
+
+```bash
+cd 3_RuO2/1_RuO2
+python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --hybrid --no-bulk \
+  --Umin -0.5 --Umax 2.5 --Gmin -15 --Gmax 15 --legend-out \
+  --cmap-2d RdYlBu --cmin-2d 0.3 --cmax-2d 0.8 --cgap-2d 0.0
+```
+
+Concepts: two-site occupancy labels, colormap windowing (`--cmin-2d`/`--cmax-2d`/`--cgap-2d`), wide 1D energy ranges
+
+### Reference Selection — Examples 9–11 (phosphate on Pt)
+
+Phosphate adsorption on Pt(111). These are the only examples that read the package-level `reference_energies.jsonc`
+directly, so they double as a worked demonstration of `--functional` and `--ref-model`. Phosphorus is referenced to
+P₂O₅ rather than elemental P, which is what `--ref-model oxide` selects.
+
+```bash
+cd 4_PO4/3_BEEF
+python ../../../HybridPourbaix.py --functional BEEF --ref-model oxide --OER --HER --legend-out --hybrid \
+  --pHmin -2 --pHmax 16 --Umin -2 --Umax 2 \
+  --thermo-data ./thermodynamic_data.jsonc
+```
+
+Each directory keeps a `thermodynamic_data.jsonc` holding only the aqueous phosphate species, so the bulk diagram
+shows the phosphate ions instead of solid P phases.
+
+Concepts: `--functional`, `--ref-model oxide`, aqueous-only thermo overrides, `--OER`/`--HER` stability lines
 
 ## Getting Started
 
@@ -102,7 +142,7 @@ python HybridPourbaix.py --help
 ### Run a Full Example Script
 
 ```bash
-cd examples/1_CoNC
+cd examples/1_MNC/1_CoNC
 bash command-simple.sh
 ```
 
@@ -112,10 +152,13 @@ Runs a minimal surface calculation in each example directory:
 
 ```bash
 cd HybridPB
-for example in 1_CoNC 2_TiNC 3_FeNC 4_MnO2_100 5_MnO2_110; do
+for example in 1_MNC/1_CoNC 1_MNC/2_TiNC 1_MNC/3_FeNC \
+               2_MnO2/1_MnO2_100 2_MnO2/2_MnO2_110 \
+               3_RuO2/1_RuO2 3_RuO2/2_ReRuO2 3_RuO2/3_ReRuO2 \
+               4_PO4/1_PBE 4_PO4/2_PBE-D3 4_PO4/3_BEEF; do
     cd examples/$example
-    python ../../HybridPourbaix.py --figx 4 --figy 4 --suffix test
-    cd ../..
+    python ../../../HybridPourbaix.py --figx 4 --figy 4 --suffix test
+    cd ../../..
 done
 ```
 
@@ -128,12 +171,13 @@ We welcome new examples. Each submission should include:
 - **Reproducibility** — a `command.sh` or `command-simple.sh` that regenerates the figures
 - **Thermodynamic consistency** — verified species energies and reference states
 
-To submit: create a numbered directory (e.g. `6_MySystem/`), add inputs and scripts, then open a pull request.
+To submit: create a numbered directory under a system group (e.g. `5_MySystem/1_MyCase/`), add inputs and
+scripts, then open a pull request.
 
 ## Further Reading
 
 - Main documentation: [../README.md](../README.md)
-- Repository: [https://github.com/hailey-suncat/HybridPB](https://github.com/hailey-suncat/HybridPB)
+- Repository: [https://github.com/SUNCAT-Center/HybridPB](https://github.com/SUNCAT-Center/HybridPB)
 
 ## Troubleshooting
 
@@ -144,5 +188,5 @@ To submit: create a numbered directory (e.g. `6_MySystem/`), add inputs and scri
 | Too many legend entries | Use `--no-bulk` or filter structures by moving JSON files into subdirectories |
 | GC-DFT not applied | Ensure `--gc` is set and `A,B,C` columns are filled in `label.csv` |
 
-- **Issues**: [GitHub Issues](https://github.com/hailey-suncat/HybridPB/issues)
-- **Questions**: [GitHub Discussions](https://github.com/hailey-suncat/HybridPB/discussions)
+- **Issues**: [GitHub Issues](https://github.com/SUNCAT-Center/HybridPB/issues)
+- **Questions**: [GitHub Discussions](https://github.com/SUNCAT-Center/HybridPB/discussions)

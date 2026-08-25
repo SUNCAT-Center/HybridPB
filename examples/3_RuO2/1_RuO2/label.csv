@@ -1,0 +1,13 @@
+H_O_O.json,2*H(brg)+2*O(cus),2
+H_OH_OH.json,2*H(brg)+2*OH(cus),4
+H_V_V.json,2*H(brg),2
+O_O.json,2*O(cus),0
+O_OH.json,*O(cus)+*OH(cus),1
+O_RuO2_brg.json,2*O(cus)+*V_RuO2(brg),0
+O_V.json,*O(cus),0
+OH_OH.json,2*OH(cus),2
+RuO2_brg.json,*V_RuO2(brg),0
+V_OH.json,*OH(cus),1
+V_V.json,clean,0
+H_V_OH.json,2*H(brg)+*OH(cus),3
+H_V_O.json,2*H(brg)+*O(cus),2

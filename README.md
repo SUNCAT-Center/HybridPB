@@ -38,7 +38,7 @@ The main entry point is `HybridPourbaix.py`.
 
 ### Installation
 ```bash
-git clone https://github.com/hailey-suncat/HybridPB.git
+git clone https://github.com/SUNCAT-Center/HybridPB.git
 cd HybridPB
 pip install -r requirements.txt
 ```
@@ -77,7 +77,7 @@ python HybridPourbaix.py --hybrid --gc --gibbs --csv-dir ./labels
 python HybridPourbaix.py --thermo-data ./custom_thermo.jsonc --ref-energies ./custom_ref.jsonc
 
 # Use the reference energies of another functional
-python HybridPourbaix.py --hybrid --functional PBE-D3
+python HybridPourbaix.py --hybrid --functional BEEF
 
 # Reference the metals to their oxides instead of the elemental metals
 python HybridPourbaix.py --hybrid --ref-model oxide
@@ -123,18 +123,24 @@ If `label.csv` is absent, chemical formulas from the JSON files are used as labe
 **Example:**
 ```jsonc
 {
+  "N": {
+    "gases": {
+      "N2": 0,
+      "NH3": -3.976,
+      "NO2": 12.390
+    }
+  },
   "Fe": {
     "solids": {
       "Fe": 0,
-      "Fe2O3": -197.3,
-      "Fe3O4": -310.1
+      "FeO": -58.880,
+      "Fe2O3": -177.100,
+      "Fe(OH)3": -166.000
     },
     "ions": {
-      "Fe++": -20.3,
-      "Fe+++": -2.5
-    },
-    "gases": {
-      "Fe(CO)5": -151.0
+      "Fe++": -20.300,
+      "Fe+++": -2.530,
+      "FeO4--": -111.685
     }
   }
 }
@@ -154,18 +160,24 @@ A species may be given the value `null` to reserve a slot whose formation energy
 {
   "PBE": {
     "gases": {
-      "H2": -6.77149190,
-      "H2O": -14.23091949
+      "H2": -6.82099190,
+      "H2O": -14.24491949
     },
     "elements": {
+      "N": -8.56951971,
+      "P": { "P": -5.40833708, "P2O5": -5.1334630293750045 },
       "Fe": { "Fe": -8.2408819, "Fe2O3": -5.51563177 },  // Fe2O3: Ueff = 4.3 eV
-      "Ni": { "Ni": -5.47060251 },
-      "N": -8.56951971
+      "Ni": { "Ni": -5.47060251 }
     }
   },
-  "PBE-D3": {
-    "gases": {},
-    "elements": {}
+  "BEEF": {
+    "gases": {
+      "H2": -7.17103764,
+      "H2O": -12.82990184
+    },
+    "elements": {
+      "P": { "P2O5": -4.1600280112500005 }
+    }
   }
 }
 ```
@@ -183,7 +195,9 @@ An element maps either to a plain number (one model-independent reference) or to
 
 If the requested model is missing but the element has exactly one entry, that one is used and a note is printed; if a category matches several keys, the run aborts and lists them. Missing H2/H2O energies or an element absent from the block also abort with an explicit message. Zero-point, heat-capacity, and entropy corrections stay in `HybridPourbaix.py`; only DFT total energies and derived references live in this file.
 
-Example directories ship their own pinned `reference_energies.jsonc` and pass it via `--ref-energies`, so they reproduce even if the package-level file changes.
+The `1_MNC`, `2_MnO2`, and `3_RuO2` example directories ship their own pinned `reference_energies.jsonc` and pass it
+via `--ref-energies`, so they reproduce even if the package-level file changes. The `4_PO4` examples deliberately use
+the package-level file, since they exist to exercise `--functional` and `--ref-model` against it.
 
 ### 5. Reference Structure Database (Optional)
 - **Location**: `reference_energies/<functional>/<formula>.json`
@@ -332,15 +346,21 @@ Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
 
 ## Examples
 
-Five examples are provided under `examples/`:
+Eleven examples are provided under `examples/`, grouped by system:
 
 | Example | System | Focus |
 |---------|--------|-------|
-| [1_CoNC](examples/1_CoNC/) | Co–N₄–C SAC | Surface adsorbates, concentration effects, 1D pH scans |
-| [2_TiNC](examples/2_TiNC/) | Ti–N₄–C catalyst | NO₃RR pathways, 43 surface species |
-| [3_FeNC](examples/3_FeNC/) | Fe–N₄–C + GC-DFT | Spin states, GC-DFT vs. standard DFT |
-| [4_MnO2_100](examples/4_MnO2_100/) | MnO₂ (100) surface | Oxide surface, K co-adsorption, custom thermo data |
-| [5_MnO2_110](examples/5_MnO2_110/) | MnO₂ (110) surface | Facet comparison, OH coverage effects |
+| [1_MNC/1_CoNC](examples/1_MNC/1_CoNC/) | Co–N₄–C SAC | Surface adsorbates, concentration effects, 1D pH scans |
+| [1_MNC/2_TiNC](examples/1_MNC/2_TiNC/) | Ti–N₄–C catalyst | NO₃RR pathways, 43 surface species |
+| [1_MNC/3_FeNC](examples/1_MNC/3_FeNC/) | Fe–N₄–C + GC-DFT | Spin states, GC-DFT vs. standard DFT |
+| [2_MnO2/1_MnO2_100](examples/2_MnO2/1_MnO2_100/) | MnO₂ (100) surface | Oxide surface, K co-adsorption, custom thermo data |
+| [2_MnO2/2_MnO2_110](examples/2_MnO2/2_MnO2_110/) | MnO₂ (110) surface | Facet comparison, OH coverage effects |
+| [3_RuO2/1_RuO2](examples/3_RuO2/1_RuO2/) | RuO₂ (110) surface | Bridge/cus site occupancy, bridge-row vacancies |
+| [3_RuO2/2_ReRuO2](examples/3_RuO2/2_ReRuO2/) | Re-doped RuO₂ (110) | Ru leaving the bridge row |
+| [3_RuO2/3_ReRuO2](examples/3_RuO2/3_ReRuO2/) | Re-doped RuO₂ (110) | Re leaving the bridge row |
+| [4_PO4/1_PBE](examples/4_PO4/1_PBE/) | Phosphate on Pt | Adsorbed phosphate with co-adsorbed H₂O, `--ref-model oxide` |
+| [4_PO4/2_PBE-D3](examples/4_PO4/2_PBE-D3/) | Phosphate on Pt | Larger set including bridge- and top-site *OH |
+| [4_PO4/3_BEEF](examples/4_PO4/3_BEEF/) | Phosphate on Pt | Same chemistry through the `BEEF` reference block |
 
 Each example directory contains its own `reference_energies.jsonc`, and every command in its `command*.sh` passes it with `--ref-energies`. The examples therefore stay reproducible no matter how the package-level reference energies change.
 
@@ -348,24 +368,34 @@ Each example directory contains its own `reference_energies.jsonc`, and every co
 
 ```bash
 # CoNC: hybrid without bulk phases
-cd examples/1_CoNC
-python ../../HybridPourbaix.py --hybrid --no-bulk --legend-in \
+cd examples/1_MNC/1_CoNC
+python ../../../HybridPourbaix.py --hybrid --no-bulk --legend-in \
   --figx 4 --figy 4 --cmap-2d Purples --pH 7
 
 # TiNC: nitrate reduction with custom concentration
-cd examples/2_TiNC
-python ../../HybridPourbaix.py --suffix NO3RR_mono \
+cd examples/1_MNC/2_TiNC
+python ../../../HybridPourbaix.py --suffix NO3RR_mono \
   --figx 6 --figy 4 --cmap-2d Reds --concentration 1e-3
 
 # FeNC: GC-DFT analysis
-cd examples/3_FeNC
-python ../../HybridPourbaix.py --gc --legend-in \
+cd examples/1_MNC/3_FeNC
+python ../../../HybridPourbaix.py --gc --legend-in \
   --figx 6 --figy 4 --cmap-2d RdBu --suffix gc_analysis
 
 # MnO2 (100): hybrid with custom bulk colors
-cd examples/4_MnO2_100
-python ../../HybridPourbaix.py --hybrid --no-bulk --Umin -0.5 --Umax 2.0 \
+cd examples/2_MnO2/1_MnO2_100
+python ../../../HybridPourbaix.py --hybrid --no-bulk --Umin -0.5 --Umax 2.0 \
   --colors-2d dodgerblue lightskyblue --figx 6 --figy 6
+
+# RuO2 (110): bridge/cus site occupancy
+cd examples/3_RuO2/1_RuO2
+python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --hybrid --no-bulk \
+  --Umin -0.5 --Umax 2.5 --Gmin -15 --Gmax 15 --cmap-2d RdYlBu --legend-out
+
+# Phosphate on Pt: BEEF block, phosphorus referenced to P2O5
+cd examples/4_PO4/3_BEEF
+python ../../../HybridPourbaix.py --functional BEEF --ref-model oxide \
+  --thermo-data ./thermodynamic_data.jsonc --hybrid --OER --HER --legend-out
 ```
 
 Each example directory includes `command.sh` and `command-simple.sh` scripts with full reproduction workflows.

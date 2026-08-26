@@ -1,4 +1,9 @@
-"""Generate Pourbaix diagrams from DFT surface energies and thermodynamic data."""
+"""Generate Pourbaix diagrams from DFT surface energies and thermodynamic data.
+
+Same as HybridPourbaix.py, except that every run also draws the phase diagram
+through pymatgen's PourbaixDiagram, which solves the boundaries analytically
+rather than scanning a (pH, U) grid. Pass --no-pymatgen to skip it.
+"""
 
 import argparse
 import glob
@@ -10,10 +15,19 @@ from math import log10
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
 import numpy as np
 import pandas as pd
 from ase.io import read, write
 from mendeleev import element
+from pymatgen.analysis.pourbaix_diagram import (
+    MU_H2O,
+    IonEntry,
+    PourbaixDiagram,
+    PourbaixEntry,
+    PourbaixPlotter,
+)
+from pymatgen.core.composition import Composition
 from pymatgen.core.ion import Ion
 
 plt.rcParams['font.family'] = 'Helvetica'
@@ -328,6 +342,11 @@ def parse_args():
     figure.add_argument('--legend-in', action='store_true', help='Place legend inside plot')
     figure.add_argument('--legend-out', action='store_true', help='Place legend outside plot')
     figure.add_argument('--legend-up', action='store_true', help='Place legend above plot')
+    figure.add_argument('--label-fontsize', type=float, default=10,
+                        help='Font size of the domain labels pymatgen writes inside each region (default: 10)')
+    figure.add_argument('--label-color', type=str, default='black',
+                        help='Color of those domain labels; any matplotlib color name '
+                             'or hex code (default: black)')
 
     cmap_bulk = parser.add_argument_group('colormap (bulk / combination)')
     cmap_bulk.add_argument('--cmap', type=str, default='Greys', help='Colormap name')
@@ -365,6 +384,10 @@ def parse_args():
     output = parser.add_argument_group('output')
     output.add_argument('--png', action='store_true', help='Export structure PNGs from JSON files')
     output.add_argument('--png-rotation', type=str, default='-90x, -90y, 0z', help='ASE view rotation for structure PNGs')
+    output.add_argument('--no-pymatgen', action='store_true',
+                        help='Skip the pymatgen PourbaixDiagram rendering, which is '
+                             'drawn alongside the grid one by default (it is skipped '
+                             'under --gc either way)')
 
     return parser.parse_args()
 
@@ -861,6 +884,8 @@ def plot_bulk_diagram(el, bulks, pHrange, Urange, pHmin, pHmax, Umin, Umax, args
         plt.show()
     plt.close(fig)
 
+    return {bulks[bid]['name']: colors[i] for i, bid in enumerate(unique_ids)}
+
 
 def build_hybrid_combinations(surfs, nsurfs, unique_elements, ions, solids, gases, liquids):
     """Build surface+bulk hybrid combinations."""
@@ -961,6 +986,12 @@ def plot_2d_diagram(surfs, save_surfs, lowest_surfaces, pHrange, Urange,
         plt.tight_layout()
         plt.show()
 
+    # Hand the exact pairing back so the pymatgen figure paints each surface the
+    # same color rather than re-deriving it and risking a drift.
+    color_map = {surfs[sid]['name']: colors_save[i] for i, sid in enumerate(save_ids)}
+    color_map.update({surfs[sid]['name']: colors_new[i] for i, sid in enumerate(new_ids)})
+    return color_map
+
 
 def plot_1d_diagram(surfs, nsurfs, Urange, Umin, Umax, target_pH, ref_surf, unique_ids,
                     args, png_name, suffix, tick):
@@ -1031,6 +1062,133 @@ def plot_1d_diagram(surfs, nsurfs, Urange, Umin, Umax, target_pH, ref_surf, uniq
 # Main
 # ---------------------------------------------------------------------------
 
+# pymatgen normalizes every Pourbaix energy per non-H/O atom, while dg() does
+# not normalize at all and never reads the metal count: its slopes are
+# H - 2O for pH and H - 2O - charge for potential. Composing each entry as one
+# dummy atom plus its H and O therefore reproduces dg() exactly, keeps the
+# normalization factor at 1 for every entry, and works for adsorbate-only runs
+# that carry no metal at all.
+PMG_DUMMY_ELEMENT = 'X'
+
+
+def build_pourbaix_entries(surfs):
+    """Wrap the surface rows as pymatgen PourbaixEntry objects.
+
+    The two codes agree on the free-energy form: pymatgen evaluates
+    energy + npH * PREFAC * pH + nPhi * V with npH = H - 2O and
+    nPhi = npH - charge, which is what dg() computes on top of ΔGh.
+
+    ΔGh is handed over directly, undoing pymatgen's water term so its
+    reconstruction lands back on it. Rebuilding it from ΔGf instead would mean
+    re-deriving the concentration term, which is not a flat
+    const * log10(conc): a species carrying several atoms of the element takes
+    that share of it, so N2(g) gets half.
+
+    Every row goes in as an IonEntry so the labels from label.csv survive;
+    solid-phase entries would be renamed after their reduced formula, which
+    also collides whenever two structures share a formula. Concentration is
+    pinned at 1 M — the term is already inside ΔGh, and PourbaixDiagram would
+    otherwise overwrite each entry from its conc_dict.
+    """
+    entries = []
+    for surf in surfs:
+        counts = {PMG_DUMMY_ELEMENT: 1}
+        for el in ('H', 'O'):
+            if surf[el]:
+                counts[el] = surf[el]
+        ion = Ion(Composition(counts), charge=surf['e'])
+        energy = surf['ΔGh'] + MU_H2O * surf['O']
+        entries.append(
+            PourbaixEntry(IonEntry(ion, energy, name=surf['name']), concentration=1.0)
+        )
+    return entries
+
+
+def plot_pymatgen_diagram(surfs, color_map, args, png_name, suffix):
+    """Draw the phase diagram a second time through pymatgen.
+
+    The grid scan in find_lowest_indices() resolves boundaries to one tick;
+    pymatgen solves them analytically, so this is the same thermodynamics with
+    smooth phase lines.
+    """
+    # Under --gc the surfaces carry A and B, making ΔG quadratic in U, which
+    # PourbaixEntry cannot express. Bulk species never do, so test the rows
+    # rather than the flag.
+    if any(surf['A'] or surf['B'] for surf in surfs):
+        print(f"Skipping the pymatgen {png_name} diagram: --gc makes ΔG quadratic "
+              "in U, which PourbaixEntry cannot express.")
+        return
+
+    entries = build_pourbaix_entries(surfs)
+    if not entries:
+        print("Skipping the pymatgen diagram: no structures to plot.")
+        return
+
+    # A name is written inside every domain, which crowds the narrow ones. Only
+    # do it when a legend was requested; otherwise leave the plot bare. The
+    # labels are drawn here rather than by pymatgen, whose to_latex_string()
+    # reads the '+' joining two species and the '-' in names like *OH-bridge as
+    # chemical formula markup and subscripts them.
+    label_domains = bool(args.legend_in or args.legend_out or args.legend_up)
+
+    fig, ax = plt.subplots(figsize=(args.figx, args.figy))
+    try:
+        diagram = PourbaixDiagram(
+            entries,
+            conc_dict={PMG_DUMMY_ELEMENT: 1.0},
+            filter_solids=False,
+        )
+        plotter = PourbaixPlotter(diagram)
+        # Water and neutral-axis lines are left to plot_water_stability() so the
+        # two diagrams carry the same --OER/--HER/--line/--fill markings.
+        plotter.get_pourbaix_plot(
+            limits=[[args.pHmin, args.pHmax], [args.Umin, args.Umax]],
+            label_domains=False,
+            show_water_lines=False,
+            show_neutral_axes=False,
+            ax=ax,
+        )
+    except Exception as exc:
+        plt.close(fig)
+        print(f"Skipping the pymatgen diagram: {exc}")
+        return
+
+    # pymatgen only strokes the domain outlines, so fill them here using the
+    # pairing plot_2d_diagram settled on, and write the label alongside.
+    label_color = (parse_colors([args.label_color]) or [(0, 0, 0, 1)])[0]
+    for entry, vertices in getattr(diagram, '_stable_domain_vertices', {}).items():
+        color = color_map.get(entry.name)
+        if color is not None:
+            ax.add_patch(Polygon(vertices, closed=True, facecolor=color,
+                                 edgecolor='none', zorder=0))
+        if label_domains:
+            ax.annotate(entry.name, np.mean(vertices, axis=0), ha='center',
+                        va='center', fontsize=args.label_fontsize, color=label_color)
+
+    # pymatgen strokes the boundaries at lw=3; match the axes frame instead.
+    frame_lw = ax.spines['left'].get_linewidth()
+    for line in ax.lines:
+        line.set_linewidth(frame_lw)
+    ax.set_xlabel('pH', fontsize=12)
+    ax.set_ylabel('Potential (V vs. SHE)', fontsize=12)
+
+    plot_water_stability(np.arange(args.pHmin, args.pHmax + args.tick, args.tick), args)
+    ax.axis([args.pHmin, args.pHmax, args.Umin, args.Umax])
+
+    # --legend-in/-out/-up all land on the same pymatgen figure, since the names
+    # go inside the domains rather than into a legend box. Collapse the three to
+    # a plain _legend so they do not write three identical files.
+    pmg_suffix = suffix
+    for tag in ('_legend_in', '_legend_out', '_legend_up'):
+        pmg_suffix = pmg_suffix.replace(tag, '_legend')
+    out_name = f'{png_name}_pymatgen{pmg_suffix}.pdf'
+    plt.savefig(out_name, dpi=300, bbox_inches='tight')
+    print(f"Pourbaix diagram saved as {out_name}")
+    if args.show_fig:
+        plt.show()
+    plt.close()
+
+
 def main(args, png_name, suffix, element_energies):
     tick = args.tick
     pHmin, pHmax = args.pHmin, args.pHmax
@@ -1088,10 +1246,15 @@ def main(args, png_name, suffix, element_energies):
         liquids.extend(el_liquids)
 
         if args.hybrid and not args.no_bulk:
-            plot_bulk_diagram(
-                el, el_ions + el_solids + el_gases + el_liquids,
+            el_bulks = el_ions + el_solids + el_gases + el_liquids
+            bulk_colors = plot_bulk_diagram(
+                el, el_bulks,
                 pHrange, Urange, pHmin, pHmax, Umin, Umax, args, suffix,
             )
+            if not args.no_pymatgen and bulk_colors:
+                plot_pymatgen_diagram(
+                    el_bulks, bulk_colors, args, f'pourbaix_bulk_{el}', suffix,
+                )
 
     save_surfs = surfs.copy()
     nsurfs = len(surfs)
@@ -1141,7 +1304,7 @@ def main(args, png_name, suffix, element_energies):
             if surf_id not in unique_ids:
                 unique_ids.append(surf_id)
 
-    plot_2d_diagram(
+    color_map = plot_2d_diagram(
         surfs, save_surfs, lowest_surfaces, pHrange, Urange,
         pHmin, pHmax, Umin, Umax, ref_surf_idx, args, png_name, suffix,
     )
@@ -1149,6 +1312,8 @@ def main(args, png_name, suffix, element_energies):
         surfs, nsurfs, Urange, Umin, Umax, target_pH, surfs[ref_surf_idx],
         unique_ids, args, png_name, suffix, tick,
     )
+    if not args.no_pymatgen:
+        plot_pymatgen_diagram(surfs, color_map, args, png_name, suffix)
 
 if __name__ == "__main__":
     cli_args = parse_args()

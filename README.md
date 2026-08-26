@@ -15,6 +15,7 @@ The main entry point is `HybridPourbaix.py`.
 - **Selectable references**: Per-functional reference energies (`--functional`) and per-element reference models such as metal vs. oxide (`--ref-model`), regenerated from a structure database
 - **Flexible activity control**: Per-species, per-element, or global ion/gas activity via `conditions.jsonc`
 - **Dual visualization**: 2D stability map and 1D energy profile at a fixed pH
+- **Two renderings**: Every 2D and bulk diagram is drawn twice — once from a (pH, U) grid scan, once by pymatgen's `PourbaixDiagram` with analytic phase boundaries (`--no-pymatgen` to skip)
 - **Customizable plots**: Separate colormaps for bulk, 2D, and 1D plots; explicit color lists; legend placement
 - **Electrochemical references**: HER/OER lines, custom potential lines, and shaded regions
 - **Debug tools**: Thermodynamic data inspection, element counts, minimum-coordination diagnostics
@@ -306,7 +307,13 @@ Options are grouped in `HybridPourbaix.py --help`. Summary below.
 --legend-in             # Legend inside plot
 --legend-out            # Legend outside plot (right)
 --legend-up             # Legend above plot
+--label-fontsize FLOAT  # Size of the pymatgen domain labels (default: 10)
+--label-color COLOR     # Color of those labels; name or hex (default: black)
 ```
+
+The pymatgen figure names each domain in place rather than building a legend
+box, so any of the three `--legend-*` flags turns those labels on and they all
+produce the same picture.
 
 ### Colormaps
 Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
@@ -341,6 +348,7 @@ Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
 ```bash
 --png                   # Export structure PNGs from JSON files
 --png-rotation STRING   # ASE view rotation (default: '-90x, -90y, 0z')
+--no-pymatgen           # Skip the pymatgen rendering, drawn by default
 ```
 
 ## Examples
@@ -423,13 +431,20 @@ where `A = B = 0` unless `--gc` is set.
 
 | File | Description |
 |------|-------------|
-| `pourbaix_surface.png` | 2D diagram (surface-only mode) |
-| `pourbaix_hybrid.png` | 2D diagram (hybrid mode) |
-| `pourbaix_hybrid_pH{N}.png` | 1D energy profile at fixed pH |
-| `pourbaix_bulk_{El}.png` | Bulk diagram per element (hybrid, no `--no-bulk`) |
+| `pourbaix_surface.pdf` | 2D diagram (surface-only mode) |
+| `pourbaix_hybrid.pdf` | 2D diagram (hybrid mode) |
+| `pourbaix_hybrid_pH{N}.pdf` | 1D energy profile at fixed pH |
+| `pourbaix_bulk_{El}.pdf` | Bulk diagram per element (hybrid, no `--no-bulk`) |
+| `pourbaix_surface_pymatgen.pdf` | The 2D diagram again, from pymatgen |
+| `pourbaix_hybrid_pymatgen.pdf` | ditto, hybrid mode |
+| `pourbaix_bulk_{El}_pymatgen.pdf` | ditto, bulk |
 | `{structure}.png` | Structure images (`--png`) |
 
 Suffixes `_gc`, `_legend_in`, `_legend_out`, `_legend_up`, and `--suffix` are appended automatically.
+The pymatgen names carry the same suffixes except that the three legend flags collapse to a plain
+`_legend`, since they all give the same figure. There is no pymatgen counterpart to the 1D profile,
+and none is written under `--gc`, whose `A·U² + B·U` term `PourbaixEntry` cannot express — bulk
+species never carry that term, so their diagram still appears.
 
 ## License
 

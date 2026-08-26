@@ -33,8 +33,13 @@ python ../../../HybridPourbaix.py --help
 | `thermodynamic_data.jsonc` | Element-specific bulk/solution data, where the package defaults need overriding |
 | `command.sh` | Full reproduction workflow with legend and color settings |
 | `command-simple.sh` | Simplified workflow without legend placement flags |
+| `pourbaix_*.pdf` | The figures those scripts write |
+| `*_pymatgen*.pdf` | Each 2D and bulk diagram drawn a second time by pymatgen |
+| `{structure}.png` | Structure renders from `--png` |
 
-Some scripts temporarily move JSON files into subdirectories (`vac/`, `OH/`, `no3rr/`) to select structure subsets. Read the script before running, or run individual `python` lines by hand.
+Some scripts temporarily move JSON files into subdirectories (`vac/`, `OH/`, `no3rr/`) to select structure
+subsets. Every script puts them back, so a run starts and ends with all structures at the top level. Read the
+script before running, or run individual `python` lines by hand.
 
 ## Learning Path
 

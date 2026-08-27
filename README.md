@@ -346,10 +346,14 @@ Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
 
 ### Output
 ```bash
+--fig-format FORMAT     # Diagram file format: pdf, png, svg, eps, jpg, tif (default: pdf)
 --png                   # Export structure PNGs from JSON files
 --png-rotation STRING   # ASE view rotation (default: '-90x, -90y, 0z')
 --no-pymatgen           # Skip the pymatgen rendering, drawn by default
 ```
+
+`--fig-format` sets the format of the diagrams; `--png` is a separate option that renders the
+input structures, so the two can be used together.
 
 ## Examples
 
@@ -440,7 +444,8 @@ where `A = B = 0` unless `--gc` is set.
 | `pourbaix_bulk_{El}_pymatgen.pdf` | ditto, bulk |
 | `{structure}.png` | Structure images (`--png`) |
 
-Suffixes `_gc`, `_legend_in`, `_legend_out`, `_legend_up`, and `--suffix` are appended automatically.
+The diagram extension follows `--fig-format` (`.pdf` above). Suffixes `_gc`, `_legend_in`,
+`_legend_out`, `_legend_up`, and `--suffix` are appended automatically.
 The pymatgen names carry the same suffixes except that the three legend flags collapse to a plain
 `_legend`, since they all give the same figure. There is no pymatgen counterpart to the 1D profile,
 and none is written under `--gc`, whose `A·U² + B·U` term `PourbaixEntry` cannot express — bulk

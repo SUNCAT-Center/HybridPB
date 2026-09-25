@@ -457,4 +457,4 @@ This project is licensed under the GNU General Public License v3.0 — see [LICE
 
 ## Citation
 
-Jung, H.; Carlson, E. Z.; Hossain, M. D.; Bajdich, M. Bridging Bulk and Surface Thermodynamics: A Hybrid Pourbaix Framework for Electrocatalyst Stability. *ChemRxiv* **2026**. DOI: 10.26434/chemrxiv.15005305/v1
+Jung, H.; Carlson, E. Z.; Hossain, M. D.; Bajdich, M. Bridging Bulk and Surface Thermodynamics: A Hybrid Pourbaix Framework for Electrocatalyst Stability. *J. Phys. Chem. C* **2026**. DOI: [10.1021/acs.jpcc.6c04369](https://doi.org/10.1021/acs.jpcc.6c04369)

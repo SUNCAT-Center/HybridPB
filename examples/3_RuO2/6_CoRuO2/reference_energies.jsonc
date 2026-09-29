@@ -1,0 +1,135 @@
+// Reference energies pinned for this example (PBE, metal references).
+// Kept local so the example reproduces even if the package-level
+// reference_energies.jsonc changes. Passed via --ref-energies in command*.sh.
+{
+  "PBE": {
+    "gases": {
+      "H2": -6.7714919,
+      "H2O": -14.23091949
+    },
+    "elements": {
+      "K": {
+        "metal": -1.02744475
+      },
+      "Ca": {
+        "metal": -1.90696579
+      },
+      "Sc": {
+        "metal": -6.24940874
+      },
+      "Ti": {
+        "metal": -5.627328705
+      },
+      "V": {
+        "metal": -5.965813935
+      },
+      "Cr": {
+        "metal": -6.901628085
+      },
+      "Mn": {
+        "metal": -8.979209897
+      },
+      "Fe": {
+        "metal": -5.041720865
+      },
+      "Co": {
+        "metal": -4.55701137
+      },
+      "Ni": {
+        "metal": -1.6850032
+      },
+      "Cu": {
+        "metal": -2.66823971
+      },
+      "Zn": {
+        "metal": -1.08927221
+      },
+      "Ga": {
+        "metal": -2.885507535
+      },
+      "Ge": {
+        "metal": -4.49679304
+      },
+      "Sr": {
+        "metal": -1.622273425
+      },
+      "Y": {
+        "metal": -6.43760309
+      },
+      "Zr": {
+        "metal": -8.519893215
+      },
+      "Nb": {
+        "metal": -10.22395804
+      },
+      "Mo": {
+        "metal": -10.94947049
+      },
+      "Tc": {
+        "metal": -10.34639626
+      },
+      "Ru": {
+        "metal": -8.243244
+      },
+      "Rh": {
+        "metal": -7.25036482
+      },
+      "Pd": {
+        "metal": -5.22150641
+      },
+      "Ag": {
+        "metal": -2.73498397
+      },
+      "Cd": {
+        "metal": -0.74811247
+      },
+      "In": {
+        "metal": -2.54547879
+      },
+      "Sn": {
+        "metal": -3.810092675
+      },
+      "Ba": {
+        "metal": -1.907392355
+      },
+      "La": {
+        "metal": -4.90018577
+      },
+      "Hf": {
+        "metal": -9.92863721
+      },
+      "Ta": {
+        "metal": -11.7908012
+      },
+      "W": {
+        "metal": -12.96337881
+      },
+      "Re": {
+        "metal": -12.42632685
+      },
+      "Os": {
+        "metal": -11.25330595
+      },
+      "Ir": {
+        "metal": -8.8705039
+      },
+      "Pt": {
+        "metal": -6.12763547
+      },
+      "Au": {
+        "metal": -3.18573487
+      },
+      "Hg": {
+        "metal": -0.17192794
+      },
+      "Tl": {
+        "metal": -2.194105015
+      },
+      "Pb": {
+        "metal": -3.57882549
+      },
+      "N": -8.56951971,
+      "P": -5.40833708
+    }
+  }
+}

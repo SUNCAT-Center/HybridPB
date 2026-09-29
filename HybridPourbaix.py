@@ -118,17 +118,35 @@ def init_thermo_constants(gas_energies):
     if T != 298.15:
         print(f"Warning: Temperature is not 300 K. The water formation energy is not valid.")
 
+    # Contributions to Gibbs energies for gas molecules
+    # (VASP-PBE calculated by Max; T = 300 K)
+    zpeh2o = 0.560   # exp. NIST 0.558
+    zpeh2  = 0.268   # exp. NIST 0.273
+    cvh2o  = 0.103   # from Colin at P = 0.035 bar
+    cvh2   = 0.0905
+    tsh2o  = 0.675   # from Colin at P = 0.035 bar
+    tsh2   = 0.408   # at P = 1 bar
+
+    # Contributions to Gibbs energies for the *O and *OH adsorbates
+    # (VASP-PBE calculated by Max using Michal's NiCe data; T = 300 K)
+    zpeoh = 0.376
+    zpeo  = 0.064
+    cvoh  = 0.042
+    cvo   = 0.034
+    tsoh  = 0.066
+    tso   = 0.060
+
     h2 = gas_energies['H2']
     h2o = gas_energies['H2O']
-    gh2o = h2o + 0.558 - 0.675 + 0.103
-    gh2 = h2 + 0.268 - 0.408 + 0.0905
+    gh2o = h2o + zpeh2o - tsh2o + cvh2o
+    gh2 = h2 + zpeh2 - tsh2 + cvh2
 
     gh = gh2 / 2
     go = gh2o - gh2
     goh = gh2o - gh2 / 2
 
-    dgo = 0.064 + 0.034 - 0.060
-    dgoh = 0.376 + 0.042 - 0.066
+    dgo = zpeo + cvo - tso
+    dgoh = zpeoh + cvoh - tsoh
     dgh = dgoh - dgo
 
 

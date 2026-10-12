@@ -600,6 +600,9 @@ def surface_formation_corrections(surfs, ref_surf, file_oh_counts, args, unique_
     for row in surfs:
         row['ΔGf'] = row['ΔGh'] - row['O'] * water_formation_energy
 
+PHASE_SUFFIXES = {'ions': '(aq)', 'solids': '(s)', 'gases': '(g)', 'liquids': '(l)'}
+
+
 def load_conditions(args):
     """Load activity/pressure overrides from conditions.jsonc."""
     script_dir = os.path.dirname(__file__)
@@ -619,12 +622,19 @@ def _cli_phase_default(phase_key, args):
 def resolve_activity(formula, el, phase_key, conditions, args):
     """Resolve species activity: species > element+phase > defaults > CLI.
 
+    A species key may carry its phase, as in N2(g) or N2(aq), which is the only
+    way to tell apart a formula that appears in more than one phase. A bare
+    formula still matches whichever phase it is found in.
+
     Solids and liquids are always activity 1 (pure condensed phases).
     """
     if phase_key in ('solids', 'liquids'):
         return 1.0
 
     species_overrides = conditions.get('species', {})
+    phased = formula + PHASE_SUFFIXES.get(phase_key, '')
+    if phased in species_overrides:
+        return float(species_overrides[phased])
     if formula in species_overrides:
         return float(species_overrides[formula])
 
@@ -816,10 +826,9 @@ def load_thermo_species(unique_elements, remaining_elements, thermo_data, ref_en
     conditions = load_conditions(args)
     ions, solids, gases, liquids = [], [], [], []
     phase_config = [
-        ('ions', '(aq)', ions),
-        ('solids', '(s)', solids),
-        ('gases', '(g)', gases),
-        ('liquids', '(l)', liquids),
+        (key, PHASE_SUFFIXES[key], bucket)
+        for key, bucket in (('ions', ions), ('solids', solids),
+                            ('gases', gases), ('liquids', liquids))
     ]
 
     for el in unique_elements:

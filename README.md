@@ -250,12 +250,19 @@ g_H  = g_H2 / 2
     "Fe": { "ions": 1e-3 }
   },
   "species": {
-    "MnO4-": 1e-4
+    "MnO4-": 1e-4,
+    "N2(g)": 0.8,
+    "N2(aq)": 1e-9
   }
 }
 ```
 
 **Priority**: `species` > `elements.{el}.{phase}` > `defaults.{phase}` > CLI (`--concentration` / `--pressure`)
+
+A species key may carry its phase — `(aq)`, `(g)`, `(s)`, `(l)` — which is the only way to set
+different activities for a formula that the thermodynamic data lists in more than one phase, such as
+N2 or HN3. A bare formula matches whichever phase it is found in, so existing files keep working.
+Solids and liquids are held at activity 1 as pure condensed phases and ignore both forms.
 
 ## Command Line Options
 

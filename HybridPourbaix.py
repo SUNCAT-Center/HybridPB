@@ -30,8 +30,9 @@ from pymatgen.analysis.pourbaix_diagram import (
 from pymatgen.core.composition import Composition
 from pymatgen.core.ion import Ion
 
-plt.rcParams['font.family'] = 'Helvetica'
-plt.rcParams['font.sans-serif'] = ['Helvetica']
+# Helvetica where it exists, falling back quietly down the list elsewhere.
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Helvetica', 'Nimbus Sans', 'Arial', 'DejaVu Sans']
 
 # ---------------------------------------------------------------------------
 # Constants

@@ -400,10 +400,11 @@ def parse_args():
     display.add_argument('--show-colors', action='store_true', help='Print hex codes of colors used in each plot')
 
     output = parser.add_argument_group('output')
-    output.add_argument('--fig-format', type=str, default='pdf',
+    output.add_argument('--fig-format', type=str, nargs='+', default=['pdf'],
                         choices=['pdf', 'png', 'svg', 'eps', 'jpg', 'tif'],
-                        help='File format for the diagrams; --png is a separate '
-                             'option that renders the structures (default: pdf)')
+                        help='File formats for the diagrams; give several to write '
+                             'them all from one run. --png is a separate option that '
+                             'renders the structures (default: pdf)')
     output.add_argument('--png', action='store_true', help='Export structure PNGs from JSON files')
     output.add_argument('--png-rotation', type=str, default='-90x, -90y, 0z', help='ASE view rotation for structure PNGs')
     output.add_argument('--no-pymatgen', action='store_true',
@@ -868,6 +869,14 @@ def load_thermo_species(unique_elements, remaining_elements, thermo_data, ref_en
 # Plotting
 # ---------------------------------------------------------------------------
 
+def save_figure(stem, args, label='Pourbaix diagram', **savefig_kwargs):
+    """Write the current figure once per format requested with --fig-format."""
+    for fmt in args.fig_format:
+        out_name = f'{stem}.{fmt}'
+        plt.savefig(out_name, bbox_inches='tight', **savefig_kwargs)
+        print(f"{label} saved as {out_name}")
+
+
 def plot_bulk_diagram(el, bulks, pHrange, Urange, pHmin, pHmax, Umin, Umax, args, suffix):
     """Plot bulk Pourbaix diagram for one element."""
     nbulks = len(bulks)
@@ -907,9 +916,8 @@ def plot_bulk_diagram(el, bulks, pHrange, Urange, pHmin, pHmax, Umin, Umax, args
     plot_water_stability(pHrange, args)
     apply_legend(args)
 
-    out_name = f'pourbaix_bulk_{el}{suffix}.{args.fig_format}'
-    plt.savefig(out_name, dpi=300, bbox_inches='tight')
-    print(f"Bulk Pourbaix diagram saved as {out_name}")
+    save_figure(f'pourbaix_bulk_{el}{suffix}', args,
+                label='Bulk Pourbaix diagram', dpi=300)
     if args.show_fig:
         plt.tight_layout()
         plt.show()
@@ -1010,9 +1018,7 @@ def plot_2d_diagram(surfs, save_surfs, lowest_surfaces, pHrange, Urange,
     plot_water_stability(pHrange, args)
     apply_legend(args)
 
-    out_name = f'{png_name}{suffix}.{args.fig_format}'
-    plt.savefig(out_name, dpi=300, bbox_inches='tight')
-    print(f"Pourbaix diagram saved as {out_name}")
+    save_figure(f'{png_name}{suffix}', args, dpi=300)
     if args.show_fig:
         plt.tight_layout()
         plt.show()
@@ -1081,9 +1087,7 @@ def plot_1d_diagram(surfs, nsurfs, Urange, Umin, Umax, target_pH, ref_surf, uniq
     ax.set_xlim(Umin, Umax)
     apply_legend(args)
 
-    out_name = f'{png_name}_pH{target_pH}{suffix}.{args.fig_format}'
-    plt.savefig(out_name, bbox_inches='tight')
-    print(f"Pourbaix diagram saved as {out_name}")
+    save_figure(f'{png_name}_pH{target_pH}{suffix}', args)
     if args.show_fig:
         plt.tight_layout()
         plt.show()
@@ -1212,9 +1216,7 @@ def plot_pymatgen_diagram(surfs, color_map, args, png_name, suffix):
     pmg_suffix = suffix
     for tag in ('_legend_in', '_legend_out', '_legend_up'):
         pmg_suffix = pmg_suffix.replace(tag, '_legend')
-    out_name = f'{png_name}_pymatgen{pmg_suffix}.{args.fig_format}'
-    plt.savefig(out_name, dpi=300, bbox_inches='tight')
-    print(f"Pourbaix diagram saved as {out_name}")
+    save_figure(f'{png_name}_pymatgen{pmg_suffix}', args, dpi=300)
     if args.show_fig:
         plt.show()
     plt.close()

@@ -17,8 +17,8 @@ python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --le
 --colors-2d '#B9E0ED' '#FEE79B' '#FDAD60'
 
 # hybrid (pH)
-python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --legend-in --OER --HER --hybrid --no-bulk --Gmin -4 --Gmax 12 --ref-json clean.json --pH 0
-python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --legend-in --OER --HER --hybrid --no-bulk --Gmin -4 --Gmax 12 --ref-json clean.json --pH 7
-python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --legend-in --OER --HER --hybrid --no-bulk --Gmin -4 --Gmax 12 --ref-json clean.json --pH 14 \
+python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --legend-in --OER --HER --hybrid --no-bulk --Gmin -4 --Gmax 12 --ref-entry 'vac*H₂+Co²⁺(aq)' --pH 0
+python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --legend-in --OER --HER --hybrid --no-bulk --Gmin -4 --Gmax 12 --ref-entry 'vac*H₂+Co²⁺(aq)' --pH 7
+python ../../../HybridPourbaix.py --ref-energies ./reference_energies.jsonc --legend-in --OER --HER --hybrid --no-bulk --Gmin -4 --Gmax 12 --ref-entry 'vac*H₂+Co²⁺(aq)' --pH 14 \
 --colors-bulk white lightgray gray lightgray darkgray white \
 --colors-2d '#B9E0ED' '#FEE79B' '#FDAD60'

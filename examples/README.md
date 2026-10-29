@@ -53,7 +53,7 @@ python ../../../HybridPourbaix.py --HER --OER --png --figx 4 --figy 4
 python ../../../HybridPourbaix.py --hybrid --no-bulk --legend-in --pH 7 --Gmin -4 --Gmax 12
 ```
 
-Concepts: reference surface selection (`--ref-json`), `--no-bulk`, `--concentration`, `--colors-2d`
+Concepts: reference surface selection (`--ref-entry`), `--no-bulk`, `--concentration`, `--colors-2d`
 
 ### Intermediate — Example 2 (TiNC)
 
@@ -167,7 +167,7 @@ scripts, then open a pull request.
 | Problem | Suggestion |
 |---------|------------|
 | Missing thermo species | Check warnings; add entries to `thermodynamic_data.jsonc` or use `--show-thermo` |
-| Wrong reference surface | Pass `--ref-json clean.json` (or your clean-slab file) |
+| Wrong reference surface | Pass `--ref-entry` with the entry name as printed in the tables, e.g. `--ref-entry 'clean+CO(g)'` |
 | Too many legend entries | Use `--no-bulk` or filter structures by moving JSON files into subdirectories |
 | GC-DFT not applied | Ensure `--gc` is set and `A,B,C` columns are filled in `label.csv` |
 

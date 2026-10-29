@@ -10,6 +10,7 @@ import glob
 import json
 import os
 import re
+import unicodedata
 from collections import Counter
 from math import log10
 
@@ -76,9 +77,15 @@ def format_name(formula):
     return formatted
 
 
-def format_df_for_display(df):
+def format_df_for_display(df, ref_surf=None):
     """Format numeric columns for console display."""
     df_copy = df.copy()
+    # Given a reference, add dΔG/dU relative to it, the U_coeff in dg(); the
+    # GC terms (2AU + B) are left out.
+    if ref_surf is not None:
+        slope = (df_copy['H'] - 2 * df_copy['O'] - df_copy['e']
+                 - (ref_surf['H'] - 2 * ref_surf['O'] - ref_surf['e']))
+        df_copy.insert(df_copy.columns.get_loc('conc'), 'slope', slope)
     for col in df_copy.select_dtypes(include=[np.number]).columns:
         if col == 'conc':
             df_copy[col] = df_copy[col].apply(lambda x: f"{x:.0e}")
@@ -92,13 +99,18 @@ def format_df_for_display(df):
 # ---------------------------------------------------------------------------
 
 def dg(surf, pH, U, ref_surf):
-    """Gibbs free energy relative to reference surface."""
+    """Gibbs free energy relative to reference surface.
+
+    The reference's own H, O and charge are subtracted too, so the reference
+    sits flat at zero at every U and pH. This shifts every entry by the same
+    amount, so the lowest phase at each (U, pH) does not change.
+    """
     surface_term = (
         (surf['A'] * U ** 2 + surf['B'] * U + surf['ΔGh'])
         - (ref_surf['A'] * U ** 2 + ref_surf['B'] * U + ref_surf['ΔGh'])
     )
-    U_coeff = surf['H'] - 2 * surf['O'] - surf['e']
-    pH_coeff = surf['H'] - 2 * surf['O']
+    U_coeff = (surf['H'] - 2 * surf['O'] - surf['e']) - (ref_surf['H'] - 2 * ref_surf['O'] - ref_surf['e'])
+    pH_coeff = (surf['H'] - 2 * surf['O']) - (ref_surf['H'] - 2 * ref_surf['O'])
     return surface_term + U_coeff * U + const * pH_coeff * pH
 
 
@@ -339,7 +351,9 @@ def parse_args():
                              'category (metal, oxide, hydride, hydroxide) or an explicit formula '
                              'such as Fe=Fe3O4 (default: metal)')
     thermo.add_argument('--gibbs', action='store_true', help='Apply G_corr from label.csv')
-    thermo.add_argument('--ref-json', type=str, help='JSON filename for reference surface (default: auto-detect)')
+    thermo.add_argument('--ref-entry', type=str,
+                        help='Entry name to use as the reference, as printed in the tables, '
+                             'e.g. clean or clean+CO(g) with --hybrid (default: auto-detect)')
 
     axis = parser.add_argument_group('axis range')
     axis.add_argument('--tick', type=float, default=0.01, help='Grid tick size')
@@ -501,16 +515,25 @@ def build_surfs(json_files, file_labels, file_gibbs_corrections, file_gc_params,
     return surfs, sorted_elements, remaining_elements, unique_elements, min_counts
 
 
+def plain_name(name):
+    """Fold sub/superscripts to ASCII so CO2(g) matches the printed CO₂(g)."""
+    return unicodedata.normalize('NFKC', name).replace('\u2212', '-')
+
+
 def find_ref_surface(surfs, unique_elements, args):
     """Find reference surface (highest energy among pure-metal surfaces)."""
-    if args.ref_json:
-        ref_name = os.path.basename(args.ref_json)
-        if not ref_name.endswith('.json'):
-            ref_name += '.json'
-        for i, row in enumerate(surfs):
-            if row.get('_json') == ref_name:
-                return i, surfs[i]
-        raise SystemExit(f"Reference surface not found: {ref_name}")
+    if args.ref_entry:
+        # A hybrid name such as clean+CO(g) is only built later, so anchor the
+        # energies to the surface it starts from. The final reference is
+        # picked by exact name in main().
+        ref_name = plain_name(args.ref_entry)
+        matches = [
+            (i, row) for i, row in enumerate(surfs)
+            if ref_name == plain_name(row['name']) or ref_name.startswith(plain_name(row['name']) + '+')
+        ]
+        if not matches:
+            raise SystemExit(f"Reference surface not found: {args.ref_entry}")
+        return max(matches, key=lambda item: len(item[1]['name']))
 
     ref_candidates = [
         (i, float(row['ΔGh']))
@@ -1100,7 +1123,8 @@ def plot_1d_diagram(surfs, nsurfs, Urange, Umin, Umax, target_pH, ref_surf, uniq
 
 # pymatgen normalizes every Pourbaix energy per non-H/O atom, while dg() does
 # not normalize at all and never reads the metal count: its slopes are
-# H - 2O for pH and H - 2O - charge for potential. Composing each entry as one
+# H - 2O for pH and H - 2O - charge for potential, less the reference's, a
+# shift common to every entry that leaves the phase map alone. Composing each entry as one
 # dummy atom plus its H and O therefore reproduces dg() exactly, keeps the
 # normalization factor at 1 for every entry, and works for adsorbate-only runs
 # that carry no metal at all.
@@ -1112,7 +1136,8 @@ def build_pourbaix_entries(surfs):
 
     The two codes agree on the free-energy form: pymatgen evaluates
     energy + npH * PREFAC * pH + nPhi * V with npH = H - 2O and
-    nPhi = npH - charge, which is what dg() computes on top of ΔGh.
+    nPhi = npH - charge, which is what dg() computes on top of ΔGh before
+    taking off the reference's slopes.
 
     ΔGh is handed over directly, undoing pymatgen's water term so its
     reconstruction lands back on it. Rebuilding it from ΔGf instead would mean
@@ -1294,9 +1319,29 @@ def main(args, png_name, suffix, element_energies):
     nsurfs = len(surfs)
     cols = surf_df_columns(remaining_elements, args.gc)
 
+    if args.hybrid:
+        max_counts, new_surfs = build_hybrid_combinations(surfs, nsurfs, unique_elements, ions, solids, gases, liquids)
+        surfs.extend(new_surfs)
+        surfs = [surf for surf in surfs if all(surf[el] == max_counts[el] for el in unique_elements)]
+        nsurfs = len(surfs)
+
+    if args.ref_entry:
+        matches = [i for i, surf in enumerate(surfs) if plain_name(surf['name']) == plain_name(args.ref_entry)]
+        if not matches:
+            raise SystemExit(f"Reference entry not found: {args.ref_entry}\n"
+                             f"Available: {', '.join(surf['name'] for surf in surfs)}")
+        ref_surf_idx = matches[0]
+        ref_surf = surfs[ref_surf_idx]
+    else:
+        ref_surf, ref_surf_idx = find_new_ref_surface(surfs, ref_surf, unique_elements)
+
+    # The tables wait for the final reference so the slope column matches what
+    # dg() draws. Only the entries actually drawn get it: the combinations in
+    # hybrid mode, the surfaces otherwise.
     print()
-    print(format_df_for_display(pd.DataFrame(surfs, columns=cols)))
-    print(f"Surfs: {nsurfs} entries\n")
+    print(format_df_for_display(pd.DataFrame(save_surfs, columns=cols),
+                                None if args.hybrid else ref_surf))
+    print(f"Surfs: {len(save_surfs)} entries\n")
 
     if args.hybrid:
         species_cols = ['ΔGf', 'ΔGh', 'e'] + remaining_elements + ['conc', 'name']
@@ -1305,18 +1350,10 @@ def main(args, png_name, suffix, element_energies):
                 print(format_df_for_display(pd.DataFrame(data, columns=species_cols)))
             print(f"{name}: {len(data)} entries\n")
 
-    if args.hybrid:
-        max_counts, new_surfs = build_hybrid_combinations(surfs, nsurfs, unique_elements, ions, solids, gases, liquids)
-        surfs.extend(new_surfs)
-        surfs = [surf for surf in surfs if all(surf[el] == max_counts[el] for el in unique_elements)]
-        nsurfs = len(surfs)
-
-        print(format_df_for_display(pd.DataFrame(surfs, columns=cols)))
+        print(format_df_for_display(pd.DataFrame(surfs, columns=cols), ref_surf))
         print(f"After adding combinations: {nsurfs} surfs entries\n")
 
-    new_ref_surf, new_ref_surf_idx = find_new_ref_surface(surfs, ref_surf, unique_elements)
-    ref_surf_idx = new_ref_surf_idx
-    ref_surf = new_ref_surf
+    print(f"Reference: {ref_surf['name']}\n")
     lowest_surfaces = find_lowest_indices(surfs, pHrange, Urange, surfs[ref_surf_idx])
 
     if args.show_min_coord:

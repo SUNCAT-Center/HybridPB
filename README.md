@@ -284,7 +284,7 @@ Options are grouped in `HybridPourbaix.py --help`. Summary below.
 --no-bulk               # Skip per-element bulk Pourbaix diagrams in hybrid mode
 --gc                    # Apply Grand Canonical DFT (A, B, C from label.csv)
 --gibbs                 # Use G_corr from label.csv instead of #OH-based correction
---ref-json FILE         # Reference surface JSON (default: auto-detect pure-metal slab)
+--ref-entry NAME        # Reference entry by its printed name, e.g. clean or clean+CO2(g); plain digits match subscripts (default: auto-detect)
 --suffix STRING         # Output filename suffix
 ```
 
@@ -415,11 +415,13 @@ Each example directory includes `command.sh` and `command-simple.sh` scripts wit
 
 ### Surface Energy Correction
 DFT total energies are converted to relative formation energies using:
-1. A **reference surface** — the highest-energy pure-metal slab (H/O only), or the structure specified by `--ref-json`
+1. A **reference surface** — the highest-energy pure-metal slab (H/O only), or the surface named by `--ref-entry`
 2. **Element and H2/H2O reference energies** from the `--functional` / `--ref-model` selection in `reference_energies.jsonc`
 3. **Gibbs corrections** — either explicit `G_corr` (`--gibbs`) or estimated from `#OH` counts
 
-In hybrid mode, a new reference is selected from surface+bulk combinations (preferring neutral phases with basic solid references).
+In hybrid mode, a new reference is selected from surface+bulk combinations (preferring neutral phases with basic solid references), unless `--ref-entry` names the entry explicitly, e.g. `--ref-entry 'clean+CO(g)'`.
+
+Every ΔG is taken relative to the reference entry, including its H, O and charge counts, so the reference lies flat at zero in the 1D plot. The printed surface table (the combination table under `--hybrid`) lists each entry's `slope`, dΔG/dU relative to the reference, leaving out the GC terms.
 
 ### Hybrid Combinations
 For each surface slab, missing elements (relative to the maximum count across all slabs) are compensated by adding thermodynamic species (ions, solids, gases, liquids). Combined states appear as `clean+Fe(s)` in the legend.

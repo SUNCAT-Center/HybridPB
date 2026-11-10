@@ -19,8 +19,8 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import numpy as np
 import pandas as pd
+from ase.data import atomic_numbers
 from ase.io import read, write
-from mendeleev import element
 from pymatgen.analysis.pourbaix_diagram import (
     MU_H2O,
     IonEntry,
@@ -292,13 +292,40 @@ def plot_water_stability(pHrange, args):
     # plt.plot(pHrange, -0.934679247+pHrange*0, '--', lw=1, color='green') #vac(*H2)
 
 
+def dg_grid(surf, pH_row, U_col, ref_surf):
+    """dg() evaluated on a whole (U, pH) grid at once.
+
+    Every term dg() builds is linear in pH and at most quadratic in U, so the
+    same expression broadcasts over a pH row vector and a U column vector. The
+    arithmetic and its order are unchanged, only the loop is gone.
+    """
+    surface_term = (
+        (surf['A'] * U_col ** 2 + surf['B'] * U_col + surf['ΔGh'])
+        - (ref_surf['A'] * U_col ** 2 + ref_surf['B'] * U_col + ref_surf['ΔGh'])
+    )
+    U_coeff = (surf['H'] - 2 * surf['O'] - surf['e']) - (ref_surf['H'] - 2 * ref_surf['O'] - ref_surf['e'])
+    pH_coeff = (surf['H'] - 2 * surf['O']) - (ref_surf['H'] - 2 * ref_surf['O'])
+    return surface_term + U_coeff * U_col + const * pH_coeff * pH_row
+
+
 def find_lowest_indices(surfs, pHrange, Urange, ref_surf):
-    """Return 2D array of lowest-energy surface indices over (U, pH) grid."""
-    lowest = np.full((len(Urange), len(pHrange)), np.nan)
-    for j, pH in enumerate(pHrange):
-        for i, U in enumerate(Urange):
-            values = [dg(s, pH, U, ref_surf) for s in surfs]
-            lowest[i, j] = min(range(len(values)), key=lambda k: values[k])
+    """Return 2D array of lowest-energy surface indices over (U, pH) grid.
+
+    Entries are compared grid-wide with a running minimum, so one pass costs a
+    few array ops per entry instead of one dg() call per entry per grid point.
+    Ties keep the first entry, exactly as the earlier min() over indices did.
+    """
+    shape = (len(Urange), len(pHrange))
+    pH_row = np.asarray(pHrange, dtype=float)[None, :]
+    U_col = np.asarray(Urange, dtype=float)[:, None]
+
+    lowest = np.zeros(shape, dtype=float)
+    best = np.full(shape, np.inf)
+    for k, surf in enumerate(surfs):
+        values = np.broadcast_to(dg_grid(surf, pH_row, U_col, ref_surf), shape)
+        improved = values < best
+        best = np.where(improved, values, best)
+        lowest[improved] = k
     return lowest
 
 
@@ -470,12 +497,12 @@ def build_surfs(json_files, file_labels, file_gibbs_corrections, file_gc_params,
     elements = set()
     for json_file in json_files:
         elements.update(read(json_file).get_chemical_symbols())
-    sorted_elements = sorted(elements, key=lambda x: element(x).atomic_number)
+    sorted_elements = sorted(elements, key=lambda x: atomic_numbers[x])
     if 'H' not in sorted_elements:
         sorted_elements.append('H')
     if 'O' not in sorted_elements:
         sorted_elements.append('O')
-    sorted_elements = sorted(sorted_elements, key=lambda x: element(x).atomic_number)
+    sorted_elements = sorted(sorted_elements, key=lambda x: atomic_numbers[x])
     min_counts = {el: None for el in sorted_elements}
 
     surfs = []

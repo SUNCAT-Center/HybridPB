@@ -33,8 +33,7 @@ The main entry point is `HybridPourbaix.py`.
 | `numpy` | >=1.19.0 | Grid calculations and numerical arrays |
 | `pandas` | >=1.2.0 | `label.csv` processing |
 | `matplotlib` | >=3.3.0 | Pourbaix diagram plotting |
-| `ase` | >=3.21.0 | Read/write JSON structure files |
-| `mendeleev` | >=0.9.0 | Element sorting by atomic number |
+| `ase` | >=3.21.0 | Read/write JSON structure files, element sorting by atomic number |
 | `pymatgen` | >=2022.0.0 | Ion formula parsing |
 
 ### Installation

@@ -29,8 +29,8 @@ import os
 from collections import Counter
 from math import gcd
 
+from ase.data import atomic_numbers
 from ase.io import read
-from mendeleev import element
 from pymatgen.core.ion import Ion
 
 import HybridPourbaix as hpb
@@ -41,7 +41,7 @@ CALMOL = 23.061  # kcal/mol per eV
 
 def atomic_number(symbol):
     """Atomic number, used to keep elements in periodic-table order."""
-    return element(symbol).atomic_number
+    return atomic_numbers[symbol]
 
 
 def formula_string(reduced, el):

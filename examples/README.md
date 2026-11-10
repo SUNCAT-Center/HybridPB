@@ -34,7 +34,6 @@ python ../../../HybridPourbaix.py --help
 | `command.sh` | Full reproduction workflow with legend and color settings |
 | `command-simple.sh` | Simplified workflow without legend placement flags |
 | `pourbaix_*.pdf` | The figures those scripts write |
-| `*_pymatgen*.pdf` | Each 2D and bulk diagram drawn a second time by pymatgen |
 | `{structure}.png` | Structure renders from `--png` |
 
 Some scripts temporarily move JSON files into subdirectories (`vac/`, `OH/`, `no3rr/`) to select structure

@@ -15,7 +15,7 @@ The main entry point is `HybridPourbaix.py`.
 - **Selectable references**: Per-functional reference energies (`--functional`) and per-element reference models such as metal vs. oxide (`--ref-model`), regenerated from a structure database
 - **Flexible activity control**: Per-species, per-element, or global ion/gas activity via `conditions.jsonc`
 - **Dual visualization**: 2D stability map and 1D energy profile at a fixed pH
-- **Two renderings**: Every 2D and bulk diagram is drawn twice — once from a (pH, U) grid scan, once by pymatgen's `PourbaixDiagram` with analytic phase boundaries (`--no-pymatgen` to skip)
+- **Two renderings**: Every 2D and bulk diagram comes from a (pH, U) grid scan, and with `--pymatgen` is drawn a second time by pymatgen's `PourbaixDiagram` with analytic phase boundaries
 - **Customizable plots**: Separate colormaps for bulk, 2D, and 1D plots; explicit color lists; legend placement
 - **Electrochemical references**: HER/OER lines, custom potential lines, and shaded regions
 - **Debug tools**: Thermodynamic data inspection, element counts, minimum-coordination diagnostics
@@ -317,9 +317,9 @@ Options are grouped in `HybridPourbaix.py --help`. Summary below.
 --label-color COLOR     # Color of those labels; name or hex (default: black)
 ```
 
-The pymatgen figure names each domain in place rather than building a legend
-box, so any of the three `--legend-*` flags turns those labels on and they all
-produce the same picture.
+The pymatgen figure, when `--pymatgen` asks for it, names each domain in place
+rather than building a legend box, so any of the three `--legend-*` flags turns
+those labels on and they all produce the same picture.
 
 ### Colormaps
 Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
@@ -355,7 +355,7 @@ Separate settings for bulk/combination, 2D original surfaces, and 1D plots:
 --fig-format FORMAT ... # Diagram file formats: pdf, png, svg, eps, jpg, tif (default: pdf)
 --png                   # Export structure PNGs from JSON files
 --png-rotation STRING   # ASE view rotation (default: '-90x, -90y, 0z')
---no-pymatgen           # Skip the pymatgen rendering, drawn by default
+--pymatgen              # Also draw each diagram with pymatgen (off by default)
 ```
 
 `--fig-format` sets the format of the diagrams and takes more than one, as in `--fig-format pdf png`,
@@ -448,7 +448,7 @@ where `A = B = 0` unless `--gc` is set.
 | `pourbaix_hybrid.pdf` | 2D diagram (hybrid mode) |
 | `pourbaix_hybrid_pH{N}.pdf` | 1D energy profile at fixed pH |
 | `pourbaix_bulk_{El}.pdf` | Bulk diagram per element (hybrid, no `--no-bulk`) |
-| `pourbaix_surface_pymatgen.pdf` | The 2D diagram again, from pymatgen |
+| `pourbaix_surface_pymatgen.pdf` | The 2D diagram again, from pymatgen (`--pymatgen`) |
 | `pourbaix_hybrid_pymatgen.pdf` | ditto, hybrid mode |
 | `pourbaix_bulk_{El}_pymatgen.pdf` | ditto, bulk |
 | `{structure}.png` | Structure images (`--png`) |

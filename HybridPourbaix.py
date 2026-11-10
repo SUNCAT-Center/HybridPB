@@ -1,8 +1,8 @@
 """Generate Pourbaix diagrams from DFT surface energies and thermodynamic data.
 
-Same as HybridPourbaix.py, except that every run also draws the phase diagram
-through pymatgen's PourbaixDiagram, which solves the boundaries analytically
-rather than scanning a (pH, U) grid. Pass --no-pymatgen to skip it.
+Diagrams come from a (pH, U) grid scan. Pass --pymatgen to also draw each one
+through pymatgen's PourbaixDiagram, which solves the phase boundaries
+analytically instead of scanning.
 """
 
 import argparse
@@ -449,10 +449,10 @@ def parse_args():
                              'renders the structures (default: pdf)')
     output.add_argument('--png', action='store_true', help='Export structure PNGs from JSON files')
     output.add_argument('--png-rotation', type=str, default='-90x, -90y, 0z', help='ASE view rotation for structure PNGs')
-    output.add_argument('--no-pymatgen', action='store_true',
-                        help='Skip the pymatgen PourbaixDiagram rendering, which is '
-                             'drawn alongside the grid one by default (it is skipped '
-                             'under --gc either way)')
+    output.add_argument('--pymatgen', action='store_true',
+                        help='Also draw each diagram with pymatgen PourbaixDiagram, '
+                             'which solves the phase boundaries analytically instead '
+                             'of scanning the grid (skipped under --gc either way)')
 
     return parser.parse_args()
 
@@ -1337,7 +1337,7 @@ def main(args, png_name, suffix, element_energies):
                 el, el_bulks,
                 pHrange, Urange, pHmin, pHmax, Umin, Umax, args, suffix,
             )
-            if not args.no_pymatgen and bulk_colors:
+            if args.pymatgen and bulk_colors:
                 plot_pymatgen_diagram(
                     el_bulks, bulk_colors, args, f'pourbaix_bulk_{el}', suffix,
                 )
@@ -1410,7 +1410,7 @@ def main(args, png_name, suffix, element_energies):
         surfs, nsurfs, Urange, Umin, Umax, target_pH, surfs[ref_surf_idx],
         unique_ids, args, png_name, suffix, tick,
     )
-    if not args.no_pymatgen:
+    if args.pymatgen:
         plot_pymatgen_diagram(surfs, color_map, args, png_name, suffix)
 
 if __name__ == "__main__":
